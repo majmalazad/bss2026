@@ -541,3 +541,132 @@ button, input, select, textarea { font: inherit; }
   padding: 2rem 0 1.5rem;
 }
 .footer-main > div:first-child { max-width: 720px; }
+
+/* Production accessibility, slideshow controls and error page */
+main:focus { outline: none; }
+
+:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.button,
+.topic-card,
+.person-card,
+.date-card,
+.site-nav a {
+  transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+
+.hero::after {
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hero-content { z-index: 2; }
+
+.hero-controls {
+  position: absolute;
+  z-index: 3;
+  right: max(1rem, calc((100% - var(--max-width)) / 2));
+  bottom: 5.25rem;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .45rem;
+  border: 1px solid rgba(255,255,255,.32);
+  border-radius: 999px;
+  background: rgba(6,21,37,.72);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 30px rgba(0,0,0,.2);
+}
+
+.hero-control {
+  min-width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.hero-control:hover { background: rgba(255,255,255,.16); }
+.hero-control-pause { min-width: 70px; padding-inline: .8rem; font-size: .82rem; }
+
+.error-page {
+  min-height: 68vh;
+  display: grid;
+  align-items: center;
+  color: #fff;
+  background:
+    linear-gradient(90deg, rgba(6,21,37,.96), rgba(6,21,37,.76)),
+    url('../img/slides/montbeliard-aerial.webp') center/cover no-repeat;
+}
+
+.error-page-inner { max-width: 760px; padding-block: 6rem; }
+.error-page h1 {
+  margin: 0;
+  max-width: 720px;
+  font-size: clamp(2.4rem, 6vw, 5rem);
+  line-height: 1.03;
+  letter-spacing: -.045em;
+}
+.error-page p:not(.eyebrow) { max-width: 620px; color: #dbe9ef; font-size: 1.15rem; }
+.error-page .button-outline { border-color: rgba(255,255,255,.58); color: #fff; }
+
+@media (max-width: 650px) {
+  .hero-controls {
+    right: 1rem;
+    bottom: 5.8rem;
+  }
+  .hero-control-pause { min-width: 62px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media print {
+  .site-header,
+  .cta-band,
+  .site-footer,
+  .back-to-top,
+  .hero-controls,
+  .cookie-notice { display: none !important; }
+  .hero,
+  .page-hero,
+  .error-page { min-height: auto; background: #fff !important; color: #000; }
+  .hero::after,
+  .page-hero::after { display: none; }
+  .hero-content,
+  .page-title,
+  .error-page-inner { padding-block: 1rem; }
+  .hero h1,
+  .hero h1 span,
+  .page-title h1,
+  .error-page h1 { color: #000; }
+  .hero-lead,
+  .page-title p,
+  .hero-meta li,
+  .error-page p:not(.eyebrow) { color: #222; }
+  a { color: #000; text-decoration: underline; }
+}
+
+.programme-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 720px) {
+  .programme-overview-grid { grid-template-columns: 1fr; }
+}

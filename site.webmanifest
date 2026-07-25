@@ -1,0 +1,23 @@
+{
+  "name": "BSS 2026 Workshop",
+  "short_name": "BSS 2026",
+  "description": "The 5th International Workshop on Blockchain Security and Scalability.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#061525",
+  "theme_color": "#061525",
+  "icons": [
+    {
+      "src": "assets/img/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/img/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
