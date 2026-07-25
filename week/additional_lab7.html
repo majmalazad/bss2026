@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+
+<html lang="en-GB">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>API Security Vulnerabilities | CMP 5358 Additional Lab 7</title>
+<link href="styles.css" rel="stylesheet"/>
+</head>
+<body data-module-code="CMP5358" data-storage-scope="cmp5358-additional-lab-7" data-week-number="Additional-Lab-7">
+<header class="hero">
+<div class="hero__content">
+<p class="eyebrow">CMP 5358 · Additional Lab 7</p>
+<h1>API Security Vulnerabilities</h1>
+<p class="hero__text">Use Burp Suite and the local VulnShop API laboratory to discover exposed documentation, identify hidden HTTP methods, interpret JSON error responses and verify missing object-level and function-level authorisation.</p>
+<div class="hero__actions"><a class="secondary" href="index.html">← Back to main page</a><button class="primary" data-tab-target="overview" type="button">Open Overview</button></div>
+</div>
+<aside aria-label="Additional Lab 7 progress" class="session-card">
+<h2>Your progress</h2>
+<div class="metric"><span id="progress-count">0%</span><small>Section completion</small></div>
+<div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+</aside>
+</header>
+<main class="app-shell">
+<nav aria-label="Additional Lab 7 pages" class="tabs">
+<button class="tab active" data-tab="overview">🏁 Overview</button>
+<button class="tab" data-tab="concepts">🧩 API Concepts</button>
+<button class="tab" data-tab="setup">🖥️ Setup</button>
+<button class="tab" data-tab="traffic">🌐 API Traffic</button>
+<button class="tab" data-tab="documentation">📘 Exposed Docs</button>
+<button class="tab" data-tab="delete-test">🗑️ DELETE Test</button>
+<button class="tab" data-tab="unused-endpoint">🔎 Unused Endpoint</button>
+<button class="tab" data-tab="patch-impact">🧪 PATCH Impact</button>
+<button class="tab" data-tab="methodology">🧭 Methodology</button>
+<button class="tab" data-tab="defences">🛡️ Defences</button>
+<button class="tab" data-tab="challenge-lab">🏆 Challenge Lab</button>
+<button class="tab" data-tab="flashcards">🧠 Flashcards</button>
+<button class="tab" data-tab="quiz">✅ Quiz</button>
+<button class="tab" data-tab="certificate">🎓 Certificate</button>
+</nav>
+<section class="panel active" id="overview">
+<div class="section-title additional-lab-intro">
+<p class="eyebrow">Additional Lab 7</p>
+<h2>API Security Vulnerabilities</h2>
+<p class="lab-subtitle">Exposed documentation, unused endpoints and broken API authorisation</p>
+<div class="tag-list"><span class="badge">Duration: 2.5–3 hours</span><span class="badge">Target: http://127.0.0.1:5000</span><span class="badge">Platform: Kali Linux and Burp Suite</span></div>
+<figure class="inline-figure additional-lab-figure hero-figure"><img alt="Local API security laboratory architecture connecting a browser, Burp Suite, a Flask API and SQLite." loading="eager" src="assets/additional_labs/api_security/api_lab_architecture.png"/><figcaption>The browser sends local API requests through Burp Suite to VulnShop's Flask routes and fictional SQLite data.</figcaption></figure>
+<div class="warning"><p><strong>Authorised laboratory use only.</strong> Perform every activity against the supplied VulnShop instance at <code>127.0.0.1:5000</code>. Do not test public, university or third-party APIs without explicit written authorisation.</p></div>
+</div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab7-overview">
+<div class="task-head"><h2>Overview and learning outcomes</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<p>Application Programming Interfaces allow software components to exchange data and invoke operations. Modern web applications often use REST-style endpoints and JSON behind their visible pages. An API can therefore expose functions that the normal interface does not show.</p>
+<p>This practical develops a controlled API-testing workflow. You will establish normal behaviour, locate JSON traffic in Burp, change one request element at a time, verify the final server-side state and explain which security control failed.</p>
+<h3 class="lab-subheading">By the end of this lab, you should be able to</h3>
+<ul>
+<li>Explain the difference between an API endpoint, resource, method, parameter and representation.</li>
+<li>Identify JSON API traffic while browsing through Burp Proxy.</li>
+<li>Use Repeater to change an API path, method, headers and JSON body.</li>
+<li>Discover human-readable and machine-readable API documentation.</li>
+<li>Use <code>OPTIONS</code> and error responses to construct a valid request.</li>
+<li>Recognise broken object-level authorisation (BOLA) and broken function-level authorisation (BFLA).</li>
+<li>Explain API impact on confidentiality, integrity and availability.</li>
+<li>Recommend secure design and negative testing controls for REST APIs.</li>
+</ul>
+</article>
+<article class="card full career-connection">
+<h3>Real-world cyber security and job-market connection</h3>
+<p>Organisations rely on APIs for mobile apps, cloud services, payment platforms, supply chains and internal automation. Security teams must test the complete API surface, not only the buttons visible in a browser. Exposed specifications, undocumented methods and weak authorisation often lead to data exposure, account manipulation or unauthorised administrative actions.</p>
+<p><strong>Where you will use it:</strong> You will apply these skills as an API Security Tester, Web Penetration Tester, Application Security Analyst, Product Security Engineer, Cloud Security Engineer, DevSecOps Engineer, Security Consultant or Secure Software Developer. Employers expect you to read HTTP and JSON, map API operations, test access-control boundaries and produce evidence-led remediation advice.</p>
+</article>
+<div class="page-nav"><a class="secondary" href="index.html">Back</a><button class="primary" data-tab-target="concepts" type="button">Next</button></div>
+</section>
+<section class="panel" id="concepts">
+<div class="section-title"><p class="eyebrow">Foundations</p><h2>Understand the API security model</h2><p>Interpret paths, resources, methods, representations, status codes and the difference between authentication and authorisation.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab7-concepts">
+<div class="task-head"><h2>1. API concepts and trust boundaries</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<h3 class="lab-subheading">Endpoint and resource</h3>
+<p>An <strong>endpoint</strong> is the network location that receives an API request. A <strong>resource</strong> is the object represented or changed. This path identifies the price resource for product 1:</p>
+<div class="lab-code"><code>GET /api/products/1/price HTTP/1.1
+Host: 127.0.0.1:5000</code></div>
+<div class="table-wrap"><table><thead><tr><th>Method</th><th>Typical meaning</th><th>Laboratory use</th></tr></thead><tbody>
+<tr><td><code>GET</code></td><td>Retrieve a representation without intentionally changing it.</td><td>Read a user or product price.</td></tr>
+<tr><td><code>PATCH</code></td><td>Apply a partial change to a resource.</td><td>Update an email or alter a price.</td></tr>
+<tr><td><code>DELETE</code></td><td>Remove or deactivate a resource.</td><td>Delete the fictional user Carlos.</td></tr>
+<tr><td><code>OPTIONS</code></td><td>Report communication options supported by an endpoint.</td><td>Reveal that the price endpoint accepts PATCH.</td></tr>
+</tbody></table></div>
+<h3 class="lab-subheading">JSON and Content-Type</h3>
+<p>JSON represents structured data as names and values. A JSON request normally declares its media type:</p>
+<div class="lab-code"><code>Content-Type: application/json
+
+{
+  "email": "alice+api@example.local"
+}</code></div>
+<div class="callout"><p><strong>Analyst habit</strong></p><p>When an API rejects a request, read the status, headers and full JSON body before guessing. A controlled error may reveal the required content type, field name or data type.</p></div>
+<h3 class="lab-subheading">Authentication is not authorisation</h3>
+<p><strong>Authentication</strong> identifies the caller. <strong>Authorisation</strong> decides whether that identity may perform an action on a specific resource. Requiring a valid session does not make an API secure when every customer can delete another user or invoke an administrator-only function.</p>
+<div class="table-wrap"><table><thead><tr><th>Status</th><th>Meaning in this lab</th><th>Interpretation</th></tr></thead><tbody>
+<tr><td>200</td><td>The request was processed.</td><td>Inspect the JSON and final state to confirm what changed.</td></tr>
+<tr><td>400</td><td>The body is malformed or a field is missing.</td><td>Correct the request structure.</td></tr>
+<tr><td>401</td><td>No authenticated session is present.</td><td>Sign in and preserve the session cookie.</td></tr>
+<tr><td>403</td><td>The operation is understood but refused.</td><td>Assess whether the policy is consistent across resources.</td></tr>
+<tr><td>404</td><td>The resource is absent.</td><td>Check the path and reset state.</td></tr>
+<tr><td>415</td><td>The media type is unsupported.</td><td>Set <code>Content-Type: application/json</code>.</td></tr>
+</tbody></table></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="overview" type="button">Back</button><button class="primary" data-tab-target="setup" type="button">Next</button></div>
+</section>
+<section class="panel" id="setup">
+<div class="section-title"><p class="eyebrow">Preparation</p><h2>Start VulnShop and Burp Suite</h2><p>Keep the target on localhost, use the supplied account and record traffic with interception off during normal browsing.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab7-setup">
+<div class="task-head"><h2>2. Prepare the laboratory</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<div class="grid two">
+<article class="card"><h3>Step 1 — Start VulnShop</h3><div class="lab-code"><code>cd Desktop/vulnshop
+chmod +x run.sh
+./run.sh</code></div><p>Keep the terminal open throughout the practical.</p></article>
+<article class="card"><h3>Step 2 — Open the API laboratory</h3><div class="lab-code"><code>http://127.0.0.1:5000/api-security</code></div><p>The page should show two resettable experiments.</p></article>
+</div>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop API Security landing page showing exposed documentation and unused endpoint experiments." src="assets/additional_labs/api_security/api_security_landing.png"/><figcaption>The API Security laboratory provides separate entry points for documentation discovery and unused-method testing.</figcaption></figure>
+<div class="warning"><p><strong>Server reminder.</strong> A browser error normally means the VulnShop terminal closed, the command ran from the wrong folder or another application is using port 5000.</p></div>
+<h3 class="lab-subheading">Step 3 — Configure Burp</h3>
+<ol>
+<li>Open Burp Suite and create a <strong>Temporary project</strong>.</li>
+<li>Select <strong>Use Burp defaults</strong>.</li>
+<li>Open <strong>Proxy → Intercept → Open browser</strong>.</li>
+<li>Keep interception off while navigating. Burp still records the requests in <strong>Proxy → HTTP history</strong>.</li>
+<li>Turn interception on only when a task asks you to pause a request.</li>
+</ol>
+<h3 class="lab-subheading">Step 4 — Sign in</h3>
+<div class="table-wrap"><table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Username</td><td><code>alice</code></td></tr><tr><td>Password</td><td><code>alice123</code></td></tr></tbody></table></div>
+<div class="warning"><p><strong>Scope check.</strong> Before forwarding any modified request, confirm that the Host header remains <code>127.0.0.1:5000</code>.</p></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="concepts" type="button">Back</button><button class="primary" data-tab-target="traffic" type="button">Next</button></div>
+</section>
+<section class="panel" id="traffic">
+<div class="section-title"><p class="eyebrow">Baseline workflow</p><h2>Identify and interpret API traffic</h2><p>Begin with a request generated by the normal interface, then inspect the method, path, JSON body and session state.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab7-traffic">
+<div class="task-head"><h2>3. Capture the normal profile API request</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<ol>
+<li>Open <code>http://127.0.0.1:5000/api-security/profile</code>.</li>
+<li>Enter <code>alice+api@example.local</code> and select <strong>Save through API</strong>.</li>
+<li>Confirm that the page displays an HTTP 200 response and the updated JSON user object.</li>
+<li>Open <strong>Proxy → HTTP history</strong> and locate <code>PATCH /api/user/alice</code>.</li>
+</ol>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop API profile page displaying a successful PATCH response for Alice." src="assets/additional_labs/api_security/profile_patch_result.png"/><figcaption>A normal profile update provides the baseline PATCH request used for later discovery.</figcaption></figure>
+<div class="lab-code"><code>PATCH /api/user/alice HTTP/1.1
+Host: 127.0.0.1:5000
+Content-Type: application/json
+Cookie: session=&lt;your-session-value&gt;
+
+{
+  "email": "alice+api@example.local"
+}</code></div>
+<h3 class="lab-subheading">What this request reveals</h3>
+<ul>
+<li>The path places a user resource beneath the <code>/api</code> base.</li>
+<li>The username is an object identifier controlled through the path.</li>
+<li>JSON supplies the new representation.</li>
+<li>The session cookie authenticates Alice, but the server must still authorise the object and action.</li>
+</ul>
+<div class="callout"><p><strong>Evidence discipline</strong></p><p>Record the unmodified request and response first. Later changes should alter only one element at a time so you can explain what caused each result.</p></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="setup" type="button">Back</button><button class="primary" data-tab-target="documentation" type="button">Next</button></div>
+</section>
+<section class="panel" id="documentation">
+<div class="section-title"><p class="eyebrow">Experiment 1</p><h2>Discover exposed API documentation</h2><p>Move from a known resource towards the API base, follow controlled hints and inspect the OpenAPI specification.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab7-documentation">
+<div class="task-head"><h2>4. Progressively shorten the API path</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<figure class="inline-figure additional-lab-figure"><img alt="Six-stage flow showing a PATCH profile request, shorter API paths, documentation discovery, DELETE discovery, target deletion and verification." src="assets/additional_labs/api_security/exposed_documentation_flow.png"/><figcaption>The investigation begins with a legitimate profile request and follows the API structure to a sensitive documented method.</figcaption></figure>
+<ol>
+<li>Send the captured PATCH request to Repeater and resend it unchanged.</li>
+<li>Remove the username, change the method to GET and send:</li>
+</ol>
+<div class="lab-code"><code>GET /api/user HTTP/1.1
+Host: 127.0.0.1:5000
+Cookie: session=&lt;your-session-value&gt;</code></div>
+<p>The expected response is a controlled hint:</p>
+<div class="lab-code"><code>HTTP/1.1 400 BAD REQUEST
+Content-Type: application/json
+
+{
+  "error": "A username is required. Try /api/user/&lt;username&gt;."
+}</code></div>
+<ol start="3"><li>Shorten the path again and send <code>GET /api</code>.</li><li>Open the returned interactive documentation locally.</li><li>Open <code>http://127.0.0.1:5000/api/openapi.json</code> and inspect the specification.</li></ol>
+<figure class="inline-figure additional-lab-figure"><img alt="Interactive API documentation listing GET, PATCH and DELETE operations for the user resource." src="assets/additional_labs/api_security/interactive_api_documentation.png"/><figcaption>Exposed documentation reveals the path parameter and sensitive DELETE operation.</figcaption></figure>
+<h3 class="lab-subheading">Inspect the OpenAPI document</h3>
+<ul>
+<li>The <code>info</code> object describes the API title and version.</li>
+<li>The <code>paths</code> object lists <code>/api/user/{username}</code>.</li>
+<li>The documented operations include GET, PATCH and DELETE.</li>
+<li>The PATCH definition describes <code>application/json</code> and the <code>email</code> field.</li>
+</ul>
+<div class="warning"><p><strong>Why documentation matters.</strong> Documentation supports legitimate development, but exposed internal specifications can reveal sensitive methods, path parameters and resource structures. Documentation exposure becomes a security issue when the revealed operation also lacks effective authorisation.</p></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="traffic" type="button">Back</button><button class="primary" data-tab-target="delete-test" type="button">Next</button></div>
+</section>
+<section class="panel" id="delete-test">
+<div class="section-title"><p class="eyebrow">Experiment 1 · Impact</p><h2>Test object-level and function-level authorisation</h2><p>Use the documented DELETE operation only against the resettable fictional Carlos account.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab7-delete-test">
+<div class="task-head"><h2>5. Delete the fictional Carlos resource</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<ol>
+<li>Preserve Alice's authenticated session cookie in Repeater.</li>
+<li>Create and send this local request:</li>
+</ol>
+<div class="lab-code"><code>DELETE /api/user/carlos HTTP/1.1
+Host: 127.0.0.1:5000
+Cookie: session=&lt;your-session-value&gt;</code></div>
+<p>Expected vulnerable response:</p>
+<div class="lab-code"><code>HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "deleted": "carlos",
+  "message": "User 'carlos' deleted"
+}</code></div>
+<ol start="3">
+<li>Return to <code>/api-security</code> and confirm that Carlos is marked <strong>Deleted</strong>.</li>
+<li>Send <code>GET /api/user/carlos</code> and confirm that it now returns 404.</li>
+<li>Select <strong>Reset API laboratory</strong> and confirm that Carlos returns to Active.</li>
+</ol>
+<div class="table-wrap"><table><thead><tr><th>Question</th><th>Finding</th></tr></thead><tbody>
+<tr><td>Which control exists?</td><td>The API requires an authenticated session.</td></tr>
+<tr><td>Which controls are missing?</td><td>The server does not verify object ownership or an administrator role.</td></tr>
+<tr><td>Which weaknesses are demonstrated?</td><td>Broken object-level and broken function-level authorisation.</td></tr>
+<tr><td>Why is documentation relevant?</td><td>It reveals the sensitive method and expected path parameter.</td></tr>
+<tr><td>What is the consequence?</td><td>An ordinary customer can deactivate another fictional user.</td></tr>
+</tbody></table></div>
+<h3 class="lab-subheading">CIA impact</h3>
+<ul><li><strong>Confidentiality:</strong> Related unauthorised GET operations could expose user data.</li><li><strong>Integrity:</strong> Another user's record is changed or deleted.</li><li><strong>Availability:</strong> The deleted user can no longer access the API resource.</li></ul>
+<div class="success-callout"><p><strong>Secure design:</strong> Enforce ownership or administrator checks on every resource operation, separate ordinary profile functions from administrative deletion, use deny-by-default policies, protect non-public specifications and log the caller, target and outcome.</p></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="documentation" type="button">Back</button><button class="primary" data-tab-target="unused-endpoint" type="button">Next</button></div>
+</section>
+<section class="panel" id="unused-endpoint">
+<div class="section-title"><p class="eyebrow">Experiment 2</p><h2>Discover an unused product-price endpoint</h2><p>Use OPTIONS and controlled errors to identify a state-changing method that the visible interface does not use.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab7-unused-endpoint">
+<div class="task-head"><h2>6. Map the price resource and supported methods</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<figure class="inline-figure additional-lab-figure"><img alt="Flow showing GET price, OPTIONS discovery, PATCH media-type error, missing-field error, price update and successful checkout." src="assets/additional_labs/api_security/unused_endpoint_flow.png"/><figcaption>Controlled method testing and error interpretation reveal the unused price-management operation.</figcaption></figure>
+<ol>
+<li>Open <code>http://127.0.0.1:5000/api-security/product/1</code>.</li>
+<li>In HTTP history, locate and send this request to Repeater:</li>
+</ol>
+<div class="lab-code"><code>GET /api/products/1/price HTTP/1.1
+Host: 127.0.0.1:5000</code></div>
+<p>The normal JSON response reports a price of <strong>£1337.00</strong>. The laboratory account has £100 credit, so normal checkout should fail.</p>
+<ol start="3"><li>Change the method to OPTIONS and send:</li></ol>
+<div class="lab-code"><code>OPTIONS /api/products/1/price HTTP/1.1
+Host: 127.0.0.1:5000</code></div>
+<p>Expected method discovery:</p>
+<div class="lab-code"><code>HTTP/1.1 200 OK
+Allow: GET, PATCH, OPTIONS
+Content-Type: application/json
+
+{
+  "methods": ["GET", "PATCH", "OPTIONS"],
+  "resource": "/api/products/1/price"
+}</code></div>
+<div class="callout"><p><strong>Interpretation</strong></p><p>The visible product page uses GET only. PATCH represents additional state-changing attack surface that the user interface does not expose.</p></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="delete-test" type="button">Back</button><button class="primary" data-tab-target="patch-impact" type="button">Next</button></div>
+</section>
+<section class="panel" id="patch-impact">
+<div class="section-title"><p class="eyebrow">Experiment 2 · Impact</p><h2>Construct PATCH and verify the financial effect</h2><p>Allow the API's controlled errors to reveal the required representation, then confirm that checkout uses the altered server-side price.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab7-patch-impact">
+<div class="task-head"><h2>7. Change the authoritative product price</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<h3 class="lab-subheading">Step 1 — Send PATCH without JSON</h3>
+<div class="lab-code"><code>PATCH /api/products/1/price HTTP/1.1
+Host: 127.0.0.1:5000
+Cookie: session=&lt;your-session-value&gt;
+
+price=1</code></div>
+<p>Expected result: HTTP 415 with a message requiring <code>application/json</code> and an example price object.</p>
+<h3 class="lab-subheading">Step 2 — Declare JSON but omit the field</h3>
+<div class="lab-code"><code>PATCH /api/products/1/price HTTP/1.1
+Host: 127.0.0.1:5000
+Content-Type: application/json
+Cookie: session=&lt;your-session-value&gt;
+
+{}</code></div>
+<p>Expected result: HTTP 400 stating that the <code>price</code> parameter is required.</p>
+<h3 class="lab-subheading">Step 3 — Supply the required field</h3>
+<div class="lab-code"><code>PATCH /api/products/1/price HTTP/1.1
+Host: 127.0.0.1:5000
+Content-Type: application/json
+Cookie: session=&lt;your-session-value&gt;
+
+{
+  "price": 0
+}</code></div>
+<p>The vulnerable API returns HTTP 200 and stores <code>price: 0.0</code>.</p>
+<h3 class="lab-subheading">Step 4 — Verify the second-order effect</h3>
+<ol>
+<li>Reload the product page and confirm that it displays £0.00.</li>
+<li>Select <strong>Add to API laboratory basket</strong>.</li>
+<li>Select <strong>Attempt purchase</strong>.</li>
+<li>Confirm that checkout accepts the product for £0.00.</li>
+<li>Reset the API laboratory and confirm that the price returns to £1337.00.</li>
+</ol>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop API laboratory basket showing a product purchased for zero pounds." src="assets/additional_labs/api_security/zero_price_checkout.png"/><figcaption>Checkout reads the altered authoritative price and accepts the product for £0.00.</figcaption></figure>
+<div class="table-wrap"><table><thead><tr><th>Observation</th><th>Security meaning</th></tr></thead><tbody>
+<tr><td>The interface uses GET only.</td><td>Visible UI coverage does not reveal every API operation.</td></tr>
+<tr><td>OPTIONS reports PATCH.</td><td>Method discovery expands the mapped attack surface.</td></tr>
+<tr><td>415 explains the media type.</td><td>Error detail helps construct a parsable request.</td></tr>
+<tr><td>400 names the price field.</td><td>Validation errors reveal the required parameter.</td></tr>
+<tr><td>PATCH succeeds for Alice.</td><td>A customer invokes a price-management function.</td></tr>
+<tr><td>Checkout uses the modified value.</td><td>The flaw causes direct integrity and financial impact.</td></tr>
+</tbody></table></div>
+<div class="success-callout"><p><strong>Secure design:</strong> Remove unused state-changing methods, explicitly allow methods per route, require an administrative role for price management, separate public and internal APIs, validate business constraints and add negative tests proving that a customer receives 403.</p></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="unused-endpoint" type="button">Back</button><button class="primary" data-tab-target="methodology" type="button">Next</button></div>
+</section>
+<section class="panel" id="methodology">
+<div class="section-title"><p class="eyebrow">Professional workflow</p><h2>Apply a repeatable API-testing methodology</h2><p>Map first, vary one element at a time, test with the lowest privilege and verify the final state independently.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab7-methodology">
+<div class="task-head"><h2>8. Build an evidence-led API assessment</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<ol>
+<li>Browse the application normally and establish a baseline.</li>
+<li>Identify API-shaped paths, JSON responses and JavaScript-generated requests.</li>
+<li>Send an interesting request to Repeater.</li>
+<li>Vary one element at a time: path, method, content type, body or parameter.</li>
+<li>Read the complete response: status, headers, JSON, cookies and observable state.</li>
+<li>Test authorisation with the lowest-privileged laboratory account.</li>
+<li>Verify the effect using a separate GET request or visible page.</li>
+<li>Reset the laboratory and document the root cause, impact and remediation.</li>
+</ol>
+<div class="warning"><p><strong>One change at a time.</strong> Changing the method, path, headers and body together prevents you from explaining which change caused the result.</p></div>
+<div class="table-wrap"><table><thead><tr><th>Dimension</th><th>Experiment 1</th><th>Experiment 2</th></tr></thead><tbody>
+<tr><td>Discovery source</td><td>Documentation at <code>/api</code></td><td>OPTIONS and error messages</td></tr>
+<tr><td>Sensitive method</td><td>DELETE user</td><td>PATCH product price</td></tr>
+<tr><td>Authorisation failure</td><td>User-to-user and customer-to-admin boundary</td><td>Customer invokes a management function</td></tr>
+<tr><td>Primary impact</td><td>User integrity and availability</td><td>Price and transaction integrity</td></tr>
+<tr><td>Verification</td><td>Carlos becomes deleted and GET returns 404</td><td>Page and cart show £0.00 and checkout succeeds</td></tr>
+</tbody></table></div>
+<h3 class="lab-subheading">Evidence to record</h3>
+<ul><li>Normal request and response.</li><li>Changed request element.</li><li>Relevant status, headers and JSON fields.</li><li>Independent state verification.</li><li>Affected identity, resource and function.</li><li>CIA and business impact.</li><li>Specific server-side control and regression test.</li></ul>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="patch-impact" type="button">Back</button><button class="primary" data-tab-target="defences" type="button">Next</button></div>
+</section>
+<section class="panel" id="defences">
+<div class="section-title"><p class="eyebrow">Secure design</p><h2>Prevent API discovery and authorisation weaknesses</h2><p>Control the complete API surface through explicit methods, resource-aware policies, safe errors and automated negative tests.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab7-defences">
+<div class="task-head"><h2>9. Map weaknesses to controls</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<div class="table-wrap"><table><thead><tr><th>Weakness</th><th>Required control</th><th>Verification test</th></tr></thead><tbody>
+<tr><td>Customer can operate on another user object</td><td>Object ownership or administrator policy for every method</td><td>Alice receives 403 for another user's protected resource</td></tr>
+<tr><td>Customer can invoke an administrative function</td><td>Function-level role check and deny-by-default policy</td><td>Customer receives 403 for DELETE and price PATCH</td></tr>
+<tr><td>Unused state-changing method remains enabled</td><td>Remove it or explicitly allow methods per route</td><td>OPTIONS no longer advertises unnecessary methods</td></tr>
+<tr><td>Internal documentation is publicly exposed</td><td>Restrict non-public documentation and specifications</td><td>Unauthorised users cannot retrieve internal OpenAPI content</td></tr>
+<tr><td>Errors reveal excessive implementation detail</td><td>Consistent errors with enough information for legitimate clients</td><td>Responses do not expose internal structure or sensitive examples</td></tr>
+<tr><td>Business values accept unsafe changes</td><td>Authorisation plus range, state and domain validation</td><td>Negative and out-of-policy values are rejected without state change</td></tr>
+</tbody></table></div>
+<h3 class="lab-subheading">Operational controls</h3>
+<ul>
+<li>Separate public catalogue APIs from internal management APIs.</li>
+<li>Log the authenticated identity, action, target resource and outcome.</li>
+<li>Monitor repeated method probing, unusual OPTIONS traffic and denied management calls.</li>
+<li>Maintain an API inventory and remove deprecated versions and methods.</li>
+<li>Test every method and object type under multiple identities.</li>
+<li>Add automated regression tests to CI/CD pipelines.</li>
+</ul>
+<h3 class="lab-subheading">Troubleshooting</h3>
+<div class="table-wrap"><table><thead><tr><th>Problem</th><th>Likely cause</th><th>Action</th></tr></thead><tbody>
+<tr><td><code>/api-security</code> returns 404</td><td>An older VulnShop package is running.</td><td>Stop it and start the updated package.</td></tr>
+<tr><td>The browser cannot connect</td><td>VulnShop stopped or port 5000 is occupied.</td><td>Check the terminal and restart <code>run.sh</code>.</td></tr>
+<tr><td>PATCH or DELETE returns 401</td><td>The session cookie is missing.</td><td>Sign in through Burp's browser and use the authenticated request.</td></tr>
+<tr><td>Carlos already returns 404</td><td>A previous attempt deleted the record.</td><td>Reset the API laboratory.</td></tr>
+<tr><td>The price is already £0.00</td><td>The second experiment was not reset.</td><td>Reset and confirm £1337.00.</td></tr>
+<tr><td>PATCH returns 415</td><td>The JSON Content-Type is absent.</td><td>Add <code>Content-Type: application/json</code>.</td></tr>
+<tr><td>PATCH returns 400</td><td>JSON is malformed or <code>price</code> is absent.</td><td>Use a valid object such as <code>{"price": 0}</code>.</td></tr>
+</tbody></table></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="methodology" type="button">Back</button><button class="primary" data-tab-target="challenge-lab" type="button">Next</button></div>
+</section>
+<section class="panel" id="challenge-lab">
+<div class="section-title"><p class="eyebrow">Independent practice</p><h2>API security challenge lab</h2><p>Use low request volumes, remain on localhost and reset the API laboratory after testing.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab7-challenge">
+<div class="task-head"><h2>10. Investigate the API without a full walkthrough</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<h3 class="lab-subheading">Challenge A — Method matrix</h3>
+<p>For each local endpoint, test only GET, PATCH, DELETE and OPTIONS. Record the status code, <code>Allow</code> header and whether application state changes.</p>
+<div class="table-wrap"><table><thead><tr><th>Endpoint</th><th>GET</th><th>PATCH</th><th>DELETE</th><th>OPTIONS</th><th>Conclusion</th></tr></thead><tbody>
+<tr><td><code>/api/user/alice</code></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td><code>/api/user/carlos</code></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td><code>/api/products/1/price</code></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h3 class="lab-subheading">Challenge B — Authorisation comparison</h3>
+<ol><li>Compare GET requests for Alice and Carlos while authenticated as Alice.</li><li>Explain why authentication alone does not prove that both reads are authorised.</li><li>Attempt <code>DELETE /api/user/administrator</code> and interpret the 403 response.</li><li>Propose one consistent policy for GET, PATCH and DELETE on user resources.</li></ol>
+<h3 class="lab-subheading">Challenge C — Defensive tests</h3>
+<p>Write at least three negative automated tests. State the request, expected status and security reason. Include one object-level test, one function-level test and one business-constraint test.</p>
+<label class="form-label" for="lab7-challenge-notes">Your challenge analysis</label><textarea class="notes-box" data-save-key="lab7-challenge-notes" id="lab7-challenge-notes" placeholder="Record your method matrix conclusions, authorisation policy and negative test cases."></textarea>
+<details class="expected-output"><summary>Hints</summary><ul><li>Begin with normal behaviour and preserve a valid authenticated cookie.</li><li>Change only one element per request.</li><li>A 200 response is not enough—verify the resource state through GET or the interface.</li><li>A secure price update should require an administrator role and valid business constraints.</li></ul></details>
+<h3 class="lab-subheading">Reflection</h3>
+<p>Write 150–200 words explaining why testing only visible buttons and forms gives an incomplete assessment when the API also exposes documentation or unused methods.</p>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="defences" type="button">Back</button><button class="primary" data-tab-target="flashcards" type="button">Next</button></div>
+</section>
+<section class="panel" id="flashcards">
+<div class="section-title"><p class="eyebrow">Revision</p><h2>API security flashcards</h2><p>Select a card to reveal its answer. Shuffle the cards to vary your revision order.</p></div>
+<div class="flashcard-controls"><button class="primary" id="shuffle-cards" type="button">Shuffle cards</button><button class="secondary" id="reset-cards" type="button">Reset cards</button></div>
+<div class="flashcard-grid" id="flashcard-grid"></div>
+<div class="page-nav"><button class="secondary" data-tab-target="challenge-lab" type="button">Back</button><article class="card self-task page-complete" data-task="additional-lab7-flashcards"><div class="task-head"><h3>Page completion</h3><label><input class="task-check" type="checkbox"/> Mark complete</label></div></article><button class="primary" data-tab-target="quiz" type="button">Next</button></div>
+</section>
+<section class="panel" id="quiz">
+<div class="section-title"><p class="eyebrow">Knowledge check</p><h2>API security vulnerabilities quiz</h2><p>Submit your answers and review the feedback for each question.</p></div>
+<form id="quiz-form"></form>
+<div class="quiz-actions"><button class="primary" id="submit-quiz" type="button">Submit quiz</button><button class="secondary" id="reset-quiz" type="button">Reset quiz</button></div>
+<p class="result-box" id="quiz-result">Complete the quiz and submit your answers.</p>
+<div class="page-nav"><button class="secondary" data-tab-target="flashcards" type="button">Back</button><article class="card self-task page-complete" data-task="additional-lab7-quiz"><div class="task-head"><h3>Page completion</h3><label><input class="task-check" type="checkbox"/> Mark complete</label></div></article><button class="primary" data-tab-target="certificate" type="button">Next</button></div>
+</section>
+<section class="panel" id="certificate">
+<div class="section-title"><p class="eyebrow">Certificate</p><h2>Generate your verifiable completion certificate</h2><p>Complete this page after the quiz. The page creates a SHA-256 verification hash in your browser.</p></div>
+<article class="card full warning certificate-instructions"><h3>Privacy note</h3><p>This static website does not send your details to a server. Enter only your name and student ID.</p></article>
+<div class="grid two certificate-instructions">
+<article class="card certificate-form-card"><h3>Student details</h3><label class="form-label">Full name<input autocomplete="name" class="form-input" id="cert-name" placeholder="Enter your full name" type="text"/></label><label class="form-label">Student ID<input class="form-input" id="cert-id" placeholder="Enter your student ID" type="text"/></label><button class="primary" id="generate-certificate" type="button">Generate certificate</button><button class="secondary" id="print-certificate" type="button">Print certificate</button><p class="inline-feedback" id="certificate-feedback"></p></article>
+<article class="card"><h3>Verification method</h3><p>The page creates this canonical record and calculates a SHA-256 hash:</p><pre><code>module=CMP5358|week=Additional-Lab-7|name=...|studentId=...|time=...|completion=...</code></pre></article>
+</div>
+<article aria-live="polite" class="card full certificate-card" id="certificate-output"><div class="certificate-border"><p class="eyebrow">CMP 5358 Lab Tutorials</p><h3>Certificate of Completion</h3><p>This certifies that</p><h2 id="cert-display-name">Student Name</h2><p>Student ID: <strong id="cert-display-id">Student ID</strong></p><p>completed <strong>Additional Lab 7: API Security Vulnerabilities</strong>.</p><div class="certificate-meta"><p><strong>Completion time:</strong> <span id="cert-display-time">Not generated yet</span></p><p><strong>Page completion:</strong> <span id="cert-display-progress">0%</span></p></div><p><strong>Verification hash:</strong></p><p class="hash-output" id="cert-hash">Generate the certificate to create a hash.</p><details class="expected-output certificate-record-detail"><summary>Verification record</summary><pre><code id="cert-record">No record generated yet.</code></pre></details></div></article>
+<div class="page-nav"><button class="secondary" data-tab-target="quiz" type="button">Back</button><a class="secondary" href="index.html">Back</a></div>
+</section>
+</main>
+<div aria-live="polite" class="toast" id="toast" role="status"></div>
+<script>
+window.CMP5358_FLASHCARDS = [
+{q:'What is an API endpoint?',a:'A network location where an API receives requests concerning a resource.'},
+{q:'What is a REST resource?',a:'An object represented through an API path, such as a user or product price.'},
+{q:'What does PATCH normally do?',a:'It applies a partial change to a resource.'},
+{q:'What can OPTIONS reveal?',a:'Communication options supported by a route, including allowed HTTP methods.'},
+{q:'What is OpenAPI?',a:'A machine-readable specification that describes API operations, parameters and representations.'},
+{q:'What is BOLA?',a:'Broken object-level authorisation: a caller accesses or changes another object without permission.'},
+{q:'What is BFLA?',a:'Broken function-level authorisation: a low-privileged caller invokes a high-privileged function.'},
+{q:'What does HTTP 415 indicate?',a:'The server does not accept the request media type.'},
+{q:'What does HTTP 400 indicate in this lab?',a:'The request is malformed or missing a field required by the endpoint.'},
+{q:'What does deny by default mean?',a:'Reject the request unless a policy explicitly permits the identity, action and resource.'},
+{q:'Why is authentication not enough?',a:'A known identity may still lack permission for a particular object or operation.'},
+{q:'Why use Repeater?',a:'It allows controlled manual changes to paths, methods, headers and bodies with clear response comparison.'},
+{q:'Why change one request element at a time?',a:'It allows the analyst to attribute a result to one controlled cause.'},
+{q:'Why verify state separately?',a:'A response may be misleading; a separate GET or page confirms the actual server-side effect.'},
+{q:'What is the primary impact of an unauthorised price change?',a:'Integrity, because authoritative product and transaction values are altered.'},
+{q:'What should an API inventory include?',a:'Every route, method, version, resource, owner, authentication requirement and authorisation policy.'}
+];
+
+window.CMP5358_QUIZ_QUESTIONS = [
+{q:'Which method can reveal supported methods for an endpoint?',options:['GET','OPTIONS','TRACE','HEAD'],answer:'OPTIONS',feedback:'OPTIONS can return an Allow header and supported-method information.'},
+{q:'What is broken object-level authorisation?',options:['A user can alter another object without permission','JSON is malformed','TLS is absent','The API is slow'],answer:'A user can alter another object without permission',feedback:'BOLA occurs when object ownership or equivalent resource policy is missing.'},
+{q:'What is broken function-level authorisation?',options:['A low-privileged user invokes an administrative function','A resource returns 404','A field is encoded','A cookie expires'],answer:'A low-privileged user invokes an administrative function',feedback:'BFLA concerns permission to invoke a function or method.'},
+{q:'Why did DELETE /api/user/carlos succeed?',options:['Alice was an administrator','The server checked only authentication','Carlos owned Alice','DELETE needs no policy'],answer:'The server checked only authentication',feedback:'The API did not enforce ownership or an administrator role.'},
+{q:'What does HTTP 415 tell the tester?',options:['The user is deleted','The media type is unsupported','The object is authorised','The response is cached'],answer:'The media type is unsupported',feedback:'The request needs an accepted Content-Type, which is JSON in this lab.'},
+{q:'Why is OPTIONS important in the price experiment?',options:['It changes the price','It reveals PATCH as additional attack surface','It logs in Alice','It resets the lab'],answer:'It reveals PATCH as additional attack surface',feedback:'The visible interface uses GET, but OPTIONS advertises a state-changing method.'},
+{q:'Which property is most directly affected by changing £1337 to £0?',options:['Integrity','Confidentiality','Availability','Anonymity'],answer:'Integrity',feedback:'The authoritative product and transaction values are changed without permission.'},
+{q:'What is the best evidence that the PATCH attack had impact?',options:['The request returned 200 only','Checkout used £0 and accepted the purchase','The URL contained api','The page used JSON'],answer:'Checkout used £0 and accepted the purchase',feedback:'Independent business-state verification is stronger than a response code alone.'},
+{q:'Which secure control should protect price updates?',options:['Hide the button','Administrator authorisation plus business validation','Rename the field','Use a longer URL'],answer:'Administrator authorisation plus business validation',feedback:'The server must authorise the function and validate the new price.'},
+{q:'Why should an analyst change one element at a time?',options:['To make the request longer','To identify which change caused the result','To avoid using cookies','To disable JSON'],answer:'To identify which change caused the result',feedback:'Controlled variation produces evidence that can be explained and repeated.'}
+];
+window.CMP5358_QUIZ_PASS_MESSAGE = 'Good work. You may now generate the API Security Vulnerabilities certificate.';
+window.CMP5358_QUIZ_FAIL_MESSAGE = 'Review the API concepts, authorisation analysis, experiments and flashcards, then try again.';
+</script>
+<script src="app.js"></script>
+</body>
+</html>

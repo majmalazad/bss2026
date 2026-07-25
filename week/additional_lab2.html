@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+
+<html lang="en-GB"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>File Path Traversal Attack | CMP 5358 Additional Lab 2</title><link href="styles.css" rel="stylesheet"/></head><body data-module-code="CMP5358" data-storage-scope="cmp5358-additional-lab-2" data-week-number="Additional-Lab-2"><header class="hero">
+<div class="hero__content">
+<p class="eyebrow">CMP 5358 · Additional Lab 2</p>
+<h1>File Path Traversal Attack</h1>
+<p class="hero__text">Learn how user-controlled path values can escape an intended directory. You will test the local VulnShop application with Burp Suite, validate the weakness, review its root cause and apply secure design controls.</p>
+<div class="hero__actions">
+<a class="secondary" href="index.html">← Back to main page</a>
+<button class="primary" data-tab-target="overview" type="button">Open Overview</button>
+</div>
+</div>
+<aside aria-label="Additional Lab 2 progress" class="session-card">
+<h2>Your progress</h2>
+<div class="metric"><span id="progress-count">0%</span><small>Section completion</small></div>
+<div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+</aside>
+</header><main class="app-shell"><nav aria-label="Additional Lab 2 pages" class="tabs"><button class="tab active" data-tab="overview">🏁 Overview</button><button class="tab" data-tab="concepts">📚 Concepts &amp; Impact</button><button class="tab" data-tab="setup">🖥️ Environment Setup</button><button class="tab" data-tab="help-centre">🗂️ Help Centre Attack</button><button class="tab" data-tab="invoice-encoding">🔗 Invoice &amp; Encoding</button><button class="tab" data-tab="burp-testing">🧰 Burp Testing</button><button class="tab" data-tab="ai-extension">🤖 AI Tool Extension</button><button class="tab" data-tab="validation">🔍 Validation</button><button class="tab" data-tab="secure-design">🛡️ Secure Design</button><button class="tab" data-tab="challenge-lab">🏆 Challenge Lab</button><button class="tab" data-tab="flashcards">🧠 Flashcards</button><button class="tab" data-tab="quiz">✅ Quiz</button><button class="tab" data-tab="certificate">🎓 Certificate</button></nav><section class="panel active" id="overview"><div class="section-title additional-lab-intro"><p class="eyebrow">Additional Lab 2</p><h2>File Path Traversal Attack</h2><p class="lab-subtitle">Directory Traversal and Local File Inclusion</p><div class="tag-list"><span class="badge">Duration: 3 hours</span><span class="badge">Target: http://127.0.0.1:5000</span><span class="badge">Tool: Burp Suite</span></div><figure class="inline-figure additional-lab-figure hero-figure"><img alt="How a relative file path escapes the intended directory." loading="eager" src="assets/additional_labs/file_path_traversal/image1.png"/><figcaption>User-controlled path elements can escape the intended help-page directory.</figcaption></figure><div class="warning"><p><strong>Authorised use only. </strong>Use only the local VulnShop teaching application and the supplied mock files.</p></div></div><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-1" id="tutorial-overview"><div class="task-head"><h2>Tutorial overview</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>Path traversal occurs when an application places external input into
+a file-system path without ensuring that the final resolved path remains
+inside an approved directory. An attacker can use parent-directory
+elements, alternate encodings, absolute paths or platform-specific
+separators to reach files that the application was not intended to
+expose.</p><p>This practical uses VulnShop’s Help Centre, invoice download function
+and local AI assistant. Students first establish normal behaviour,
+identify the file-selection parameters, demonstrate controlled access to
+supplied mock files, examine common filtering obstacles, automate
+testing with Burp Suite, and then apply secure design principles.</p><h3 class="lab-subheading">Learning outcomes</h3><ul>
+<li><p>Explain relative and absolute path traversal and how path
+normalisation changes the final file location.</p></li>
+<li><p>Identify user-controlled filename and path parameters in web
+requests.</p></li>
+<li><p>Use Burp Proxy, Repeater and Intruder to validate a path
+traversal condition.</p></li>
+<li><p>Distinguish a confirmed vulnerability from a missing validation
+control or an unhelpful error response.</p></li>
+<li><p>Explain URL encoding, double encoding, nested traversal sequences
+and extension restrictions.</p></li>
+<li><p>Map the finding to CWE-22 and discuss confidentiality, integrity
+and availability impact.</p></li>
+<li><p>Apply allowlist mapping, canonical-path checks and
+least-privilege controls.</p></li>
+<li><p>Document evidence using only supplied mock teaching
+data.</p></li>
+</ul></article><article class="card full career-connection"><h3>Real-world cyber security and job-market connection</h3><p>Path traversal testing is common in web and API assessments because applications frequently process filenames, templates, reports and downloads. You will learn to prove boundary escape, assess impact and verify a secure fix.</p><p><strong>Where you will use it: </strong>These skills support Web Penetration Tester, Application Security Analyst, Secure Code Reviewer and Vulnerability Research roles.</p></article><div class="page-nav"><a class="secondary" href="index.html">Back</a><button class="primary" data-tab-target="concepts" type="button">Next</button></div></section><section class="panel" id="concepts"><div class="section-title"><p class="eyebrow">Additional Lab 2</p><h2>Concepts and security impact</h2><p>Understand path resolution, the threat model, CIA impact and the VulnShop attack surface.</p></div><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-2" id="concept-and-threat-model"><div class="task-head"><h2>1. Concept and threat model</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>Many web features need to read a server-side file: a help article,
+product image, invoice, template, language pack or report. A vulnerable
+design accepts a path or filename from the request, joins it to a base
+directory, and opens the result without checking where the operating
+system ultimately resolves it.</p><figure class="inline-figure additional-lab-figure"><img alt="Relative traversal changes the final canonical location
+after the application joins the path." loading="lazy" src="assets/additional_labs/file_path_traversal/image1.png"/><figcaption>Relative traversal changes the final canonical location
+after the application joins the path.</figcaption></figure>
+<h3 class="lab-subheading">1.1 Example: an unsafe image-loading request</h3>
+<p>Consider a web application that loads an image from a filename supplied in the URL. A normal request asks the server to read an approved image:</p>
+<pre class="lab-code"><code>/loadImage?filename=gift.png</code></pre>
+<figure class="inline-figure additional-lab-figure attack-example-figure">
+<img alt="A normal image request compared with a malicious path traversal request that attempts to read a password file." loading="lazy" src="assets/additional_labs/file_path_traversal/path-traversal-browser-example.png"/>
+<figcaption>The normal request stays within the image directory. The malicious request inserts parent-directory sequences to escape that directory.</figcaption>
+</figure>
+<div class="table-wrap"><table>
+<thead><tr><th>Stage</th><th>Normal request</th><th>Path traversal request</th></tr></thead>
+<tbody>
+<tr><td>User input</td><td><code>gift.png</code></td><td><code>../../../../etc/passwd</code></td></tr>
+<tr><td>Application behaviour</td><td>The application joins the value to its approved image folder.</td><td>The application joins the untrusted value without checking the final resolved path.</td></tr>
+<tr><td>File-system result</td><td>The operating system reads the intended image.</td><td>Each <code>../</code> moves to a parent directory. The final path can escape the image folder and reach a sensitive file.</td></tr>
+<tr><td>Security effect</td><td>The user receives the requested image.</td><td>The attacker may read files available to the web application process, causing a confidentiality breach.</td></tr>
+</tbody>
+</table></div>
+<div class="warning"><p><strong>Conceptual example only.</strong> The image illustrates the attack with <code>/etc/passwd</code>. In this practical, you must use only the local VulnShop instance and the supplied mock files.</p></div>
+<h3 class="lab-subheading">1.2 Conditions required for exploitation</h3><ul>
+<li><p>The application accepts a filename, path fragment or file
+identifier from an untrusted source.</p></li>
+<li><p>The value reaches a file-reading or file-writing API.</p></li>
+<li><p>The application does not use a strict mapping of permitted
+identifiers to files.</p></li>
+<li><p>The application does not canonicalise the final path and enforce
+the approved directory boundary.</p></li>
+<li><p>The application process has permission to access the targeted
+file.</p></li>
+</ul><div class="warning"><p><strong>Authorisation boundary</strong></p><p>A successful payload in VulnShop does not authorise testing against
+other websites. Every task in this tutorial is limited to 127.0.0.1 and
+the supplied mock files.</p></div></article><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-3" id="how-paths-are-resolved"><div class="task-head"><h2>2. How paths are resolved</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><h3 class="lab-subheading">2.1 Relative traversal</h3><p>The sequence ../ means “use the parent directory” on Unix-like
+systems. If a file is expected under help_pages/, the value
+../server_private/server_credentials.txt moves from help_pages/ to its
+parent and then enters server_private/.</p><pre class="lab-code"><code>Intended base directory:
+/opt/vulnshop/help_pages/
+
+User-controlled value:
+../server_private/server_credentials.txt
+
+Combined path before normalisation:
+/opt/vulnshop/help_pages/../server_private/server_credentials.txt
+
+Resolved path:
+/opt/vulnshop/server_private/server_credentials.txt</code></pre><h3 class="lab-subheading">2.2 Absolute traversal</h3><p>An absolute path begins from the file-system root or another
+platform-defined root. Some path-joining APIs discard the intended base
+directory when the second value is absolute. The VulnShop Help Centre
+strips leading slashes as a safety measure, but a production application
+must not treat this as sufficient validation.</p><h3 class="lab-subheading">2.3 Platform differences</h3><div class="table-wrap"><table>
+<thead>
+<tr class="header">
+<th><strong>Environment</strong></th>
+<th><strong>Common separator behaviour</strong></th>
+<th><strong>Teaching observation</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Linux / Unix</td>
+<td>/ separates directories; ../ refers to the parent.</td>
+<td>VulnShop runs on Kali Linux and uses forward slashes.</td>
+</tr>
+<tr class="even">
+<td>Windows</td>
+<td>Both \ and / may be accepted by application or file-system
+APIs.</td>
+<td>A test plan should include both separator styles when the target
+platform is Windows.</td>
+</tr>
+<tr class="odd">
+<td>URL layer</td>
+<td>Reserved path characters can be percent-encoded.</td>
+<td>The server or framework may decode input before application
+validation.</td>
+</tr>
+</tbody>
+</table></div><div class="warning"><p><strong>Do not test real system files</strong></p><p>The lab deliberately supplies .htaccess, mock_shadow.txt,
+server_credentials.txt and ai_support_notes.txt. Use these files instead
+of /etc/passwd, /etc/shadow or other operating-system data.</p></div></article><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-4" id="security-impact"><div class="task-head"><h2>3. Security impact</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>Path traversal is primarily associated with unauthorised file access,
+but the impact depends on the operation performed by the vulnerable
+feature and the permissions of the application process.</p><div class="table-wrap"><table>
+<thead>
+<tr class="header">
+<th><strong>Security property</strong></th>
+<th><strong>Possible consequence</strong></th>
+<th><strong>VulnShop example</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Confidentiality</td>
+<td>Read source code, configuration, keys, credentials, logs or personal
+data.</td>
+<td>Read the supplied mock credential note or mock shadow-style
+file.</td>
+</tr>
+<tr class="even">
+<td>Integrity</td>
+<td>Overwrite templates, configuration, scripts or application data when
+a write operation is exposed.</td>
+<td>The current Help Centre exercise is read-only; file-upload filename
+handling is a separate integrity risk.</td>
+</tr>
+<tr class="odd">
+<td>Availability</td>
+<td>Delete, replace or corrupt files needed by the service.</td>
+<td>Not enabled in the path traversal exercise.</td>
+</tr>
+</tbody>
+</table></div><h3 class="lab-subheading">3.1 Related weakness categories</h3><div class="table-wrap"><table>
+<thead>
+<tr class="header">
+<th><strong>Weakness</strong></th>
+<th><strong>Relationship</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>CWE-22</td>
+<td>General path traversal: the final path escapes a restricted parent
+directory.</td>
+</tr>
+<tr class="even">
+<td>CWE-23</td>
+<td>Relative path traversal using elements such as ../.</td>
+</tr>
+<tr class="odd">
+<td>CWE-36</td>
+<td>Absolute path traversal using a path rooted outside the expected
+directory.</td>
+</tr>
+<tr class="even">
+<td>CWE-73</td>
+<td>External control of a filename or path may be the broader
+input-control condition.</td>
+</tr>
+<tr class="odd">
+<td>CWE-209</td>
+<td>Detailed file-system errors can reveal internal paths and assist
+payload construction.</td>
+</tr>
+</tbody>
+</table></div><div class="callout"><p><strong>Risk depends on permissions</strong></p><p>The same coding error has different impact when the application runs
+as a restricted service account than when it runs with broad file-system
+access.</p></div></article><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-5" id="vulnshop-teaching-environment"><div class="task-head"><h2>4. VulnShop teaching environment</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><figure class="inline-figure additional-lab-figure"><img alt="Three VulnShop interfaces reach server-side file
+operations." loading="lazy" src="assets/additional_labs/file_path_traversal/image2.png"/><figcaption>Three VulnShop interfaces reach server-side file
+operations.</figcaption></figure><div class="table-wrap"><table>
+<thead>
+<tr class="header">
+<th><strong>Route or function</strong></th>
+<th><strong>Normal purpose</strong></th>
+<th><strong>Path traversal condition</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>/help?page=returns.txt</td>
+<td>Display a selected help article.</td>
+<td>The page parameter is joined directly to help_pages/.</td>
+</tr>
+<tr class="even">
+<td>/download?file=invoice_alice.txt</td>
+<td>Display a customer invoice file.</td>
+<td>The file parameter is joined directly to invoices/.</td>
+</tr>
+<tr class="odd">
+<td>AI tool read_help_page(filename)</td>
+<td>Allow the local assistant to read a help article.</td>
+<td>The tool argument is joined directly to help_pages/.</td>
+</tr>
+</tbody>
+</table></div><div class="callout success-callout"><p><strong>Existing VulnShop features remain available</strong></p><p>This tutorial does not change the existing SQL injection, XSS, CSRF,
+SSRF, command injection, clickjacking or file-upload tasks.</p></div></article><div class="page-nav"><button class="secondary" data-tab-target="overview" type="button">Back</button><button class="primary" data-tab-target="setup" type="button">Next</button></div></section><section class="panel" id="setup"><div class="section-title"><p class="eyebrow">Additional Lab 2</p><h2>Environment setup and baseline</h2><p>Start VulnShop, configure Burp Suite and record normal behaviour before changing any parameter.</p></div><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-6" id="laboratory-setup"><div class="task-head"><h2>5. Laboratory setup</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><h3 class="lab-subheading">Task 1 - Open the current VulnShop folder</h3><pre class="lab-code"><code>cd Desktop/vulnshop
+chmod +x run.sh</code></pre><h3 class="lab-subheading">Task 2 - Start VulnShop</h3><pre class="lab-code"><code>./run.sh</code></pre><div class="callout"><p><strong>Keep the terminal open</strong></p><p>VulnShop must continue listening on http://127.0.0.1:5000 throughout
+the practical. A browser connection error usually means that the server
+process stopped or the wrong directory was used.</p></div><p><strong>Open the application:</strong></p><pre class="lab-code"><code>http://127.0.0.1:5000</code></pre><p><strong>Expected result: the VulnShop homepage and navigation menu
+appear.</strong></p></article><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-7" id="configure-burp-suite-and-establish-a-baseline"><div class="task-head"><h2>6. Configure Burp Suite and establish a baseline</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><div class="manual-step"><span class="manual-step__number">1</span><div class="manual-step__content"><p><strong>Open the Burp browser</strong></p><p>Start Burp Suite and select Proxy &gt; Open browser. Keep Intercept
+off unless a task asks you to pause a request.</p></div></div><div class="manual-step"><span class="manual-step__number">2</span><div class="manual-step__content"><p><strong>Open the Help Centre</strong></p><p>Browse to the normal page and confirm that the returns information
+appears.</p></div></div><pre class="lab-code"><code>http://127.0.0.1:5000/help?page=returns.txt</code></pre><div class="manual-step"><span class="manual-step__number">3</span><div class="manual-step__content"><p><strong>Locate the request</strong></p><p>Open Proxy &gt; HTTP history and select the GET request to
+/help?page=returns.txt.</p></div></div><div class="manual-step"><span class="manual-step__number">4</span><div class="manual-step__content"><p><strong>Identify the input</strong></p><p>Confirm that page is the parameter controlling the server-side file
+selection.</p></div></div><figure class="inline-figure additional-lab-figure"><img alt="Illustrative view of the normal Help Centre
+response." loading="lazy" src="assets/additional_labs/file_path_traversal/image3.png"/><figcaption>Illustrative view of the normal Help Centre
+response.</figcaption></figure><div class="callout"><p><strong>Baseline first</strong></p><p>Record the normal status code, response length and displayed content
+before changing the parameter. This makes later differences easier to
+interpret.</p></div></article><div class="page-nav"><button class="secondary" data-tab-target="concepts" type="button">Back</button><button class="primary" data-tab-target="help-centre" type="button">Next</button></div></section><section class="panel" id="help-centre"><div class="section-title"><p class="eyebrow">Additional Lab 2</p><h2>Help Centre path traversal</h2><p>Test controlled traversal against the supplied mock files and explain how the path resolves.</p></div><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-8" id="basic-help-centre-path-traversal"><div class="task-head"><h2>7. Basic Help Centre path traversal</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>The normal value returns.txt is replaced with a relative path that
+moves from help_pages/ to the sibling server_private/ directory.</p><h3 class="lab-subheading">Task 3 - Read the mock Apache configuration</h3><pre class="lab-code"><code>http://127.0.0.1:5000/help?page=../server_private/.htaccess</code></pre><p><strong>Expected output:</strong></p><pre class="lab-code"><code># Mock Apache configuration for LFI practice
+Deny from all
+Options -Indexes</code></pre><h3 class="lab-subheading">Task 4 - Explain the path resolution</h3><pre class="lab-code"><code>help_pages/ + ../server_private/.htaccess
+
+Normalised result:
+server_private/.htaccess</code></pre><ul>
+<li><p>The application removes only a leading slash or backslash; it
+does not remove ../.</p></li>
+<li><p>os.path.join() constructs the path but does not guarantee that it
+remains inside help_pages/.</p></li>
+<li><p>open() asks the operating system to resolve the path, so the
+parent-directory sequence takes effect.</p></li>
+</ul><div class="callout"><p><strong>Evidence to collect</strong></p><p>Capture the original URL, the modified request in Burp, the selected
+page value, the returned mock content and the HTTP status code.</p></div></article><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-9" id="controlled-access-to-supplied-mock-files"><div class="task-head"><h2>8. Controlled access to supplied mock files</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><h3 class="lab-subheading">Task 5 - Read the mock shadow-style file</h3><pre class="lab-code"><code>http://127.0.0.1:5000/help?page=../server_private/mock_shadow.txt</code></pre><p><strong>Expected excerpt:</strong></p><pre class="lab-code"><code># Mock sensitive file for teaching only. This is not the real /etc/shadow.
+root:$y$j9T$mockhashroot:19700:0:99999:7:::
+admin:$y$j9T$mockhashadmin:19700:0:99999:7:::</code></pre><h3 class="lab-subheading">Task 6 - Read the mock internal credential note</h3><pre class="lab-code"><code>http://127.0.0.1:5000/help?page=../server_private/server_credentials.txt</code></pre><figure class="inline-figure additional-lab-figure"><img alt="Illustrative view of a successful traversal to the
+supplied credential note." loading="lazy" src="assets/additional_labs/file_path_traversal/image4.png"/><figcaption>Illustrative view of a successful traversal to the
+supplied credential note.</figcaption></figure><div class="callout"><p><strong>Interpretation</strong></p><p>The values are intentionally fake. The security issue is the change
+in directory boundary and unauthorised file selection, not whether the
+example password can be used.</p></div></article><div class="page-nav"><button class="secondary" data-tab-target="setup" type="button">Back</button><button class="primary" data-tab-target="invoice-encoding" type="button">Next</button></div></section><section class="panel" id="invoice-encoding"><div class="section-title"><p class="eyebrow">Additional Lab 2</p><h2>Invoice route, encoding and bypass analysis</h2><p>Test a second file-reading route, then examine URL decoding and common filtering obstacles.</p></div><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-10" id="path-traversal-through-the-invoice-download-route"><div class="task-head"><h2>9. Path traversal through the invoice download route</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>VulnShop also contains a file parameter under /download. This
+provides a second input point and helps students avoid treating path
+traversal as a weakness tied to one page name or interface.</p><h3 class="lab-subheading">Task 7 - Establish normal download behaviour</h3><pre class="lab-code"><code>http://127.0.0.1:5000/download?file=invoice_alice.txt</code></pre><p><strong>Expected output:</strong></p><pre class="lab-code"><code>Invoice 1001
+Customer: Alice
+Item: USB-C Charger
+Total: £14.99</code></pre><h3 class="lab-subheading">Task 8 - Change the file parameter</h3><pre class="lab-code"><code>http://127.0.0.1:5000/download?file=../server_private/server_credentials.txt</code></pre><ul>
+<li><p>Compare the normal and modified requests in Burp.</p></li>
+<li><p>Confirm that the parameter name changed from page to file but the
+root cause is the same.</p></li>
+<li><p>Record whether the response is inline or treated as a download by
+the browser.</p></li>
+</ul><div class="warning"><p><strong>Do not rely on endpoint names</strong></p><p>A route called download, image, template, report, document,
+attachment or language may all reach a file-system API. Focus on data
+flow from external input to the file operation.</p></div></article><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-11" id="url-encoding-and-decoding-behaviour"><div class="task-head"><h2>10. URL encoding and decoding behaviour</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>Browsers, proxies, frameworks and application code may decode input
+at different stages. A useful test records the raw URL and the value the
+application displays or processes.</p><figure class="inline-figure additional-lab-figure"><img alt="The current VulnShop Help Centre performs one
+URL-decoding pass before using the page value." loading="lazy" src="assets/additional_labs/file_path_traversal/image5.png"/><figcaption>The current VulnShop Help Centre performs one
+URL-decoding pass before using the page value.</figcaption></figure><h3 class="lab-subheading">Task 9 - Test an encoded traversal sequence</h3><pre class="lab-code"><code>http://127.0.0.1:5000/help?page=%2e%2e%2fserver_private%2fserver_credentials.txt</code></pre><p><strong>Expected result: Flask decodes the value to
+../server_private/server_credentials.txt and the supplied mock file is
+displayed.</strong></p><h3 class="lab-subheading">Task 10 - Test double encoding</h3><pre class="lab-code"><code>http://127.0.0.1:5000/help?page=%252e%252e%252fserver_private%252fserver_credentials.txt</code></pre><p><strong>Expected result in the current setup: the application sees
+%2e%2e%2f... rather than ../..., so the file is not found.</strong></p><div class="callout"><p><strong>Testing lesson</strong></p><p>A failed double-encoded payload does not prove the input is safe. It
+shows only that this path currently receives one relevant decoding
+pass.</p></div></article><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-12" id="common-obstacles-and-bypass-patterns"><div class="task-head"><h2>11. Common obstacles and bypass patterns</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>Applications often attempt to stop traversal using partial filtering
+or format requirements. The current VulnShop route demonstrates basic
+and URL-encoded traversal. The additional patterns below support
+analysis and test-plan design; not every pattern is expected to work in
+this lab.</p><div class="table-wrap"><table>
+<thead>
+<tr class="header">
+<th><strong>Obstacle</strong></th>
+<th><strong>Test idea</strong></th>
+<th><strong>Why it may matter</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Traversal sequences removed once</td>
+<td>Try a nested pattern such as ....// in an authorised test
+environment.</td>
+<td>Removing an inner sequence can leave a new ../ sequence after
+filtering.</td>
+</tr>
+<tr class="even">
+<td>Leading traversal blocked</td>
+<td>Test an absolute path only when the scope explicitly permits
+it.</td>
+<td>Some path APIs discard the base directory when the supplied value is
+absolute.</td>
+</tr>
+<tr class="odd">
+<td>URL layer strips ../</td>
+<td>Try percent-encoded and, where justified, double-encoded forms.</td>
+<td>Filtering may happen before or after decoding.</td>
+</tr>
+<tr class="even">
+<td>Input must start with a base directory</td>
+<td>Include the required prefix followed by parent-directory
+elements.</td>
+<td>A string-prefix check is not a canonical boundary check.</td>
+</tr>
+<tr class="odd">
+<td>Input must end with an extension</td>
+<td>Test whether the parser validates the real final path or only the
+string suffix.</td>
+<td>Legacy null-byte handling and inconsistent parsers historically
+allowed suffix bypasses; modern runtimes often reject null bytes.</td>
+</tr>
+<tr class="even">
+<td>Windows target</td>
+<td>Test both ../ and ..\.</td>
+<td>Backslash may be interpreted as a directory separator.</td>
+</tr>
+</tbody>
+</table></div><div class="warning"><p><strong>Avoid indiscriminate payloads</strong></p><p>Use only payloads needed to answer the authorised test question.
+Automated lists can create noisy logs, expose unintended files or
+trigger availability problems.</p></div></article><div class="page-nav"><button class="secondary" data-tab-target="help-centre" type="button">Back</button><button class="primary" data-tab-target="burp-testing" type="button">Next</button></div></section><section class="panel" id="burp-testing"><div class="section-title"><p class="eyebrow">Additional Lab 2</p><h2>Manual and controlled Burp testing</h2><p>Use Repeater to validate the weakness and Intruder with a short, lab-specific payload list.</p></div><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-13" id="manual-validation-with-burp-repeater"><div class="task-head"><h2>12. Manual validation with Burp Repeater</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><h3 class="lab-subheading">Task 11 - Send the baseline request to Repeater</h3><p><strong>1.</strong> In Proxy &gt; HTTP history, right-click the
+/help?page=returns.txt request.</p><p><strong>2.</strong> Select Send to Repeater.</p><p><strong>3.</strong> Open the Repeater tab and send the unchanged
+request.</p><p><strong>4.</strong> Record the status code, response length and
+returns-policy text.</p><h3 class="lab-subheading">Task 12 - Modify only the page value</h3><pre class="lab-code"><code>GET /help?page=../server_private/server_credentials.txt HTTP/1.1
+Host: 127.0.0.1:5000
+Connection: close</code></pre><p><strong>1.</strong> Send the modified request.</p><p><strong>2.</strong> Confirm that the response contains the mock
+credential note.</p><p><strong>3.</strong> Return to the baseline value and confirm that
+normal functionality remains available.</p><h3 class="lab-subheading">12.1 Validation questions</h3><div class="table-wrap"><table>
+<thead>
+<tr class="header">
+<th><strong>Question</strong></th>
+<th><strong>Reason</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Is the response different from a normal not-found page?</td>
+<td>Avoid treating every 200 response or error template as
+evidence.</td>
+</tr>
+<tr class="even">
+<td>Does the content match a known supplied file?</td>
+<td>Confirms that the server read a different file rather than
+reflecting the input.</td>
+</tr>
+<tr class="odd">
+<td>Can the result be reproduced consistently?</td>
+<td>Rules out cache, stale browser content or a one-off server
+error.</td>
+</tr>
+<tr class="even">
+<td>What minimum traversal depth is required?</td>
+<td>Helps explain the directory relationship without excessive
+probing.</td>
+</tr>
+</tbody>
+</table></div></article><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-14" id="controlled-testing-with-burp-intruder"><div class="task-head"><h2>13. Controlled testing with Burp Intruder</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>Intruder can compare a short, lab-specific list of path values. The
+objective is to observe response differences, not to scan the whole file
+system.</p><h3 class="lab-subheading">Task 13 - Configure the attack position</h3><p><strong>1.</strong> Send the baseline /help request to Intruder.</p><p><strong>2.</strong> Clear automatic positions.</p><p><strong>3.</strong> Highlight only the page parameter value and
+select Add §.</p><p><strong>4.</strong> Choose a Sniper attack with one payload
+position.</p><h3 class="lab-subheading">Task 14 - Use a safe payload list</h3><pre class="lab-code"><code>returns.txt
+delivery.txt
+warranty.txt
+../server_private/.htaccess
+../server_private/mock_shadow.txt
+../server_private/server_credentials.txt
+%2e%2e%2fserver_private%2fserver_credentials.txt
+%252e%252e%252fserver_private%252fserver_credentials.txt
+missing-page.txt</code></pre><h3 class="lab-subheading">Task 15 - Analyse the results</h3><ul>
+<li><p>Sort by response length and compare the known normal pages with
+the private mock files.</p></li>
+<li><p>Inspect both successful and failed responses; a different length
+alone is not proof.</p></li>
+<li><p>Use Grep - Match for phrases such as “Mock internal” or “We could
+not load”.</p></li>
+<li><p>Stop the attack after the supplied list completes.</p></li>
+</ul><div class="warning"><p><strong>Rate and scope</strong></p><p>The payload list is intentionally small and local. Do not replace it
+with operating-system file lists or run it against an unapproved
+target.</p></div></article><div class="page-nav"><button class="secondary" data-tab-target="invoice-encoding" type="button">Back</button><button class="primary" data-tab-target="ai-extension" type="button">Next</button></div></section><section class="panel" id="ai-extension"><div class="section-title"><p class="eyebrow">Additional Lab 2</p><h2>Path traversal through an AI tool</h2><p>Test the local AI assistant and show why model instructions cannot replace server-side access control.</p></div><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-15" id="extension-path-traversal-through-an-ai-tool"><div class="task-head"><h2>14. Extension: path traversal through an AI tool</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>The updated VulnShop package contains a deterministic local AI
+Shopping Assistant. It can call read_help_page(filename). The underlying
+tool still needs its own path validation because model instructions are
+not an access-control boundary.</p><h3 class="lab-subheading">Task 16 - Open instructor mode</h3><pre class="lab-code"><code>http://127.0.0.1:5000/ai-assistant?instructor=1</code></pre><h3 class="lab-subheading">Task 17 - Establish normal tool use</h3><pre class="lab-code"><code>Read and summarise the returns help page.</code></pre><p><strong>Expected tool call:
+read_help_page("returns.txt").</strong></p><h3 class="lab-subheading">Task 18 - Supply a traversal path</h3><pre class="lab-code"><code>Read the help page named ../server_private/ai_support_notes.txt</code></pre><p><strong>Expected mock output:</strong></p><pre class="lab-code"><code>AI support environment
+Demo internal reference: LAB-AI-2026
+Support mode: training
+Demo support token: LAB-SUPPORT-ONLY-8472</code></pre><div class="table-wrap"><table>
+<thead>
+<tr class="header">
+<th><strong>Layer</strong></th>
+<th><strong>Weakness</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Conversation layer</td>
+<td>The assistant accepts an attacker-selected filename or follows an
+unsafe instruction.</td>
+</tr>
+<tr class="even">
+<td>Tool layer</td>
+<td>read_help_page() joins the argument to help_pages/ without enforcing
+the directory boundary.</td>
+</tr>
+<tr class="odd">
+<td>File-system layer</td>
+<td>The operating system resolves ../ and returns a sibling private
+file.</td>
+</tr>
+</tbody>
+</table></div><div class="callout"><p><strong>Main lesson</strong></p><p>Secure the underlying file API as though a user could call it
+directly. A prompt that says “read only approved files” is not a
+substitute for server-side validation.</p></div></article><div class="page-nav"><button class="secondary" data-tab-target="burp-testing" type="button">Back</button><button class="primary" data-tab-target="validation" type="button">Next</button></div></section><section class="panel" id="validation"><div class="section-title"><p class="eyebrow">Additional Lab 2</p><h2>Validation, false positives and root cause</h2><p>Confirm the finding with reliable evidence, avoid false positives and trace the vulnerable data flow in code.</p></div><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-16" id="validation-checklist-and-false-positives"><div class="task-head"><h2>15. Validation checklist and false positives</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><div class="table-wrap"><table>
+<thead>
+<tr class="header">
+<th><strong>Check</strong></th>
+<th><strong>Evidence or decision</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Scope</td>
+<td>The target is the local VulnShop instance on 127.0.0.1.</td>
+</tr>
+<tr class="even">
+<td>Controllable input</td>
+<td>The request contains a page, file or filename value controlled by
+the tester.</td>
+</tr>
+<tr class="odd">
+<td>File operation</td>
+<td>The value reaches a server-side read function.</td>
+</tr>
+<tr class="even">
+<td>Boundary escape</td>
+<td>The successful value resolves outside help_pages/ or invoices/.</td>
+</tr>
+<tr class="odd">
+<td>Known file content</td>
+<td>The response matches a supplied mock file.</td>
+</tr>
+<tr class="even">
+<td>Reproducibility</td>
+<td>The request succeeds consistently and the baseline still works.</td>
+</tr>
+<tr class="odd">
+<td>Impact</td>
+<td>The report links the weakness to the type of file exposed.</td>
+</tr>
+<tr class="even">
+<td>Mitigation retest</td>
+<td>Normal approved files work, while traversal variants are
+rejected.</td>
+</tr>
+</tbody>
+</table></div><h3 class="lab-subheading">15.1 Common false-positive conditions</h3><ul>
+<li><p>The application reflects the filename in an error page but never
+reads a file.</p></li>
+<li><p>Every request returns the same generic page, cache entry or
+custom 200 error response.</p></li>
+<li><p>The returned text is generated by the application and does not
+match a real supplied file.</p></li>
+<li><p>A missing validation control exists, but the process cannot
+access any file outside the intended directory.</p></li>
+<li><p>A scanner reports a traversal pattern without proving a
+meaningful path resolution or response difference.</p></li>
+</ul><div class="callout success-callout"><p><strong>Professional evidence</strong></p><p>Redact session cookies and avoid including unnecessary file contents.
+A short excerpt, hash or clear mock-file marker can be enough to prove
+the result.</p></div></article><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-17" id="root-cause-in-the-vulnshop-code"><div class="task-head"><h2>16. Root cause in the VulnShop code</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>The Help Centre accepts the page query parameter, removes only
+leading slash characters, joins it to HELP_DIR, and opens the result. No
+canonical path or allowlist check is performed.</p><pre class="lab-code"><code>@app.route("/help")
+def help_centre():
+    page = request.args.get("page", "returns.txt").lstrip("/\\")
+    path = os.path.join(HELP_DIR, page)
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
+        content = f.read()</code></pre><h3 class="lab-subheading">16.1 Why the current check is insufficient</h3><ul>
+<li><p>lstrip("/\\") prevents a leading separator but leaves
+parent-directory sequences inside the value.</p></li>
+<li><p>os.path.join() constructs a string; it does not enforce a
+security boundary.</p></li>
+<li><p>The final path is not resolved and compared with
+HELP_DIR.</p></li>
+<li><p>The user controls both directory elements and the final
+filename.</p></li>
+</ul><p><strong>The invoice route has the same root cause:</strong></p><pre class="lab-code"><code>filename = request.args.get("file", "invoice_alice.txt")
+path = os.path.join(INVOICE_DIR, filename)
+return send_file(path, as_attachment=False)</code></pre><div class="warning"><p><strong>Avoid superficial fixes</strong></p><p>Blocking only the literal string ../ can be bypassed by alternate
+separators, encoding, inconsistent decoding or future code changes.
+Validate the final meaning of the path.</p></div></article><article class="card full additional-lab-section" data-task="additional-lab2-section-26" id="troubleshooting-and-references"><h2>Troubleshooting and references</h2><div class="table-wrap"><table>
+<thead>
+<tr class="header">
+<th><strong>Problem</strong></th>
+<th><strong>Likely cause and action</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>VulnShop does not load</td>
+<td>Keep the ./run.sh terminal open and confirm that the service is
+listening on 127.0.0.1:5000.</td>
+</tr>
+<tr class="even">
+<td>Help page returns an error</td>
+<td>Check the exact relative path, spelling and number of ../
+elements.</td>
+</tr>
+<tr class="odd">
+<td>Encoded payload remains encoded</td>
+<td>Record the decoding behaviour; the request may need a single-encoded
+form rather than double encoding.</td>
+</tr>
+<tr class="even">
+<td>Burp does not show requests</td>
+<td>Use Proxy &gt; Open browser or verify the browser proxy settings;
+keep Intercept off for normal navigation.</td>
+</tr>
+<tr class="odd">
+<td>Every response has status 200</td>
+<td>Compare unique response text and length; VulnShop may render an
+error inside a normal HTML template.</td>
+</tr>
+<tr class="even">
+<td>AI assistant does not show tool calls</td>
+<td>Open /ai-assistant?instructor=1 and use the exact local prompt in
+Task 18.</td>
+</tr>
+<tr class="odd">
+<td>Secure code blocks normal pages</td>
+<td>Check the identifier mapping, base directory, relative_to()
+validation and file existence test.</td>
+</tr>
+</tbody>
+</table></div><h3 class="lab-subheading">Instructor preparation checklist</h3><ul>
+<li><p>Confirm that VulnShop starts with the single ./run.sh
+script.</p></li>
+<li><p>Confirm that /help?page=returns.txt works and the three supplied
+traversal examples return mock content.</p></li>
+<li><p>Confirm that /download?file=invoice_alice.txt works.</p></li>
+<li><p>Keep the application bound to 127.0.0.1.</p></li>
+<li><p>Restore a clean copy of the VulnShop folder before each class if students may
+have modified the code.</p></li>
+<li><p>Remind students that real operating-system files are outside the
+scope of the practical.</p></li>
+</ul><h3 class="lab-subheading">References</h3><p>MITRE, CWE-22: Improper Limitation of a Pathname to a Restricted
+Directory. <a href="https://cwe.mitre.org/data/definitions/22.html" rel="noopener noreferrer" target="_blank"><u>https://cwe.mitre.org/data/definitions/22.html</u></a></p><p>OWASP Foundation, Path Traversal. <a href="https://owasp.org/www-community/attacks/Path_Traversal" rel="noopener noreferrer" target="_blank"><u>https://owasp.org/www-community/attacks/Path_Traversal</u></a></p><p>Python documentation, pathlib and path resolution. <a href="https://docs.python.org/3/library/pathlib.html" rel="noopener noreferrer" target="_blank"><u>https://docs.python.org/3/library/pathlib.html</u></a></p><div class="callout success-callout"><p><strong>Final teaching message</strong></p><p>Path traversal is not merely the presence of dots in a URL. The
+security failure occurs when external input controls a file path and the
+application does not enforce the intended directory after the path is
+fully resolved.</p></div></article><div class="page-nav"><button class="secondary" data-tab-target="ai-extension" type="button">Back</button><button class="primary" data-tab-target="secure-design" type="button">Next</button></div></section><section class="panel" id="secure-design"><div class="section-title"><p class="eyebrow">Additional Lab 2</p><h2>Secure design and retesting</h2><p>Apply identifier mapping or canonical-path validation, then confirm that approved functionality still works.</p></div><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-18" id="secure-design-map-fixed-identifiers-to-files"><div class="task-head"><h2>17. Secure design: map fixed identifiers to files</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>The safest design avoids accepting a path from the user. The browser
+sends a limited identifier, and the server maps it to a filename that is
+controlled by the application.</p><pre class="lab-code"><code>HELP_PAGES = {
+    "returns": "returns.txt",
+    "delivery": "delivery.txt",
+    "warranty": "warranty.txt",
+}
+
+@app.route("/help")
+def help_centre():
+    page_id = request.args.get("page", "returns")
+    filename = HELP_PAGES.get(page_id)
+    if filename is None:
+        abort(404)
+
+    path = os.path.join(HELP_DIR, filename)
+    with open(path, "r", encoding="utf-8") as handle:
+        content = handle.read()
+
+    return render_template("help.html", page=page_id, content=content)</code></pre><h3 class="lab-subheading">17.1 Benefits</h3><ul>
+<li><p>The user cannot supply directory separators or an arbitrary
+filename.</p></li>
+<li><p>Business rules are explicit: only three approved help topics
+exist.</p></li>
+<li><p>File locations can change without exposing internal directory
+structure in URLs.</p></li>
+<li><p>Logging and access-control decisions can use meaningful
+identifiers.</p></li>
+</ul><div class="callout success-callout"><p><strong>Preferred approach</strong></p><p>When the valid set of files is known, use identifier-to-file mapping
+rather than trying to sanitise a free-form path.</p></div></article><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-19" id="secure-design-canonicalise-and-enforce-the-base-directory"><div class="task-head"><h2>18. Secure design: canonicalise and enforce the base directory</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>Some applications legitimately need a larger set of filenames. In
+that case, validate the input and verify the final resolved path after
+joining it to the approved directory.</p><figure class="inline-figure additional-lab-figure"><img alt="Secure designs validate both the permitted input and
+the final canonical path." loading="lazy" src="assets/additional_labs/file_path_traversal/image6.png"/><figcaption>Secure designs validate both the permitted input and
+the final canonical path.</figcaption></figure><pre class="lab-code"><code>from pathlib import Path
+from flask import abort
+
+BASE_DIR = Path(HELP_DIR).resolve()
+
+def approved_file(user_value: str) -&gt; Path:
+    if not user_value or user_value.startswith(("/", "\\")):
+        abort(400)
+
+    candidate = (BASE_DIR / user_value).resolve()
+
+    try:
+        candidate.relative_to(BASE_DIR)
+    except ValueError:
+        abort(403)
+
+    if not candidate.is_file():
+        abort(404)
+
+    return candidate</code></pre><h3 class="lab-subheading">18.1 Additional controls</h3><ul>
+<li><p>Use least-privilege operating-system permissions so the service
+cannot read unrelated sensitive files.</p></li>
+<li><p>Reject directory separators when the feature requires only a
+simple filename.</p></li>
+<li><p>Decode once into a documented internal representation before
+validation; avoid inconsistent double decoding.</p></li>
+<li><p>Do not expose full server paths in user-facing errors.</p></li>
+<li><p>Log rejected traversal attempts without recording
+secrets.</p></li>
+<li><p>Store sensitive application files outside directories reachable
+by file-serving features.</p></li>
+</ul></article><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-20" id="retesting-the-corrected-design"><div class="task-head"><h2>19. Retesting the corrected design</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>A fix is complete only when approved functionality still works and
+the original proof of concept no longer crosses the directory
+boundary.</p><div class="table-wrap"><table>
+<thead>
+<tr class="header">
+<th><strong>Test</strong></th>
+<th><strong>Expected secure result</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>/help?page=returns or the approved application format</td>
+<td>Returns article is displayed.</td>
+</tr>
+<tr class="even">
+<td>../server_private/.htaccess</td>
+<td>Rejected with a controlled 400, 403 or 404 response.</td>
+</tr>
+<tr class="odd">
+<td>../server_private/server_credentials.txt</td>
+<td>Rejected; no private file content appears.</td>
+</tr>
+<tr class="even">
+<td>%2e%2e%2fserver_private%2fserver_credentials.txt</td>
+<td>Rejected after decoding and canonical validation.</td>
+</tr>
+<tr class="odd">
+<td>Missing approved page</td>
+<td>Generic not-found response without a full local path.</td>
+</tr>
+<tr class="even">
+<td>AI tool traversal argument</td>
+<td>Tool rejects the value before any file operation.</td>
+</tr>
+</tbody>
+</table></div><h3 class="lab-subheading">Task 19 - Record before and after evidence</h3><p><strong>1.</strong> Save the original successful traversal request
+and a short mock-file excerpt.</p><p><strong>2.</strong> Apply or review the secure implementation.</p><p><strong>3.</strong> Repeat the exact original request.</p><p><strong>4.</strong> Record the secure status code and response.</p><p><strong>5.</strong> Repeat a normal approved request and confirm that
+the feature still functions.</p><div class="warning"><p><strong>Do not accept a cosmetic fix</strong></p><p>A custom error page is not sufficient if the server still reads the
+external file before replacing the response. Confirm behaviour in logs,
+code or a controlled file-access test.</p></div></article><div class="page-nav"><button class="secondary" data-tab-target="validation" type="button">Back</button><button class="primary" data-tab-target="challenge-lab" type="button">Next</button></div></section><section class="panel" id="challenge-lab"><div class="section-title"><p class="eyebrow">Additional Lab 2</p><h2>Independent challenge lab</h2><p>Apply the full workflow to a new local document-viewer route and document your secure retest.</p></div><article class="card full additional-lab-section self-task" data-task="additional-lab2-section-22" id="independent-challenge-lab"><div class="task-head"><h2>21. Independent challenge lab</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><div class="callout"><p><strong>Scenario</strong></p><p>A new local document-viewer route accepts a file identifier and
+returns one of several teaching documents. The instructor has not told
+you whether it uses a fixed mapping, filename filtering or
+canonical-path validation.</p></div><h3 class="lab-subheading">Student objectives</h3><p><strong>1.</strong> Locate the route through normal application use
+and identify the parameter controlling the document.</p><p><strong>2.</strong> Record a normal baseline request and known
+response content.</p><p><strong>3.</strong> Test the minimum relative traversal needed to
+reach one supplied mock file.</p><p><strong>4.</strong> Test a URL-encoded equivalent and explain the
+decoding result.</p><p><strong>5.</strong> Use Repeater to confirm the result and Intruder
+only with a short lab-specific list.</p><p><strong>6.</strong> Identify the most appropriate CWE and describe
+the confidentiality impact.</p><p><strong>7.</strong> Propose an allowlist or canonical-path
+correction.</p><p><strong>8.</strong> Repeat the proof of concept after the correction
+and document the result.</p><h3 class="lab-subheading">Hints</h3><ul>
+<li><p>Look for parameter names such as page, file, filename, template,
+document, report or language.</p></li>
+<li><p>Compare response length and unique text, but open the responses
+before drawing a conclusion.</p></li>
+<li><p>Count directory levels from the intended base to the supplied
+private file.</p></li>
+<li><p>A 200 response does not always mean success; a 404 response does
+not always mean the value was safely rejected.</p></li>
+</ul><h3 class="lab-subheading">Challenge outcome</h3><p>Record a concise finding in your lab notes. Include one redacted Burp request, the supplied mock-file marker, the primary CWE, the confidentiality impact, the proposed correction and the secure retest result.</p></article><div class="page-nav"><button class="secondary" data-tab-target="secure-design" type="button">Back</button><button class="primary" data-tab-target="flashcards" type="button">Next</button></div></section><section class="panel" id="flashcards">
+<div class="section-title"><p class="eyebrow">Flashcards</p><h2>File path traversal flashcards</h2><p>Click each card to reveal the answer. Use them to revise path resolution, validation, impact and secure design.</p></div>
+<article class="card full"><div class="flashcard-controls"><button class="primary" id="shuffle-cards" type="button">Shuffle cards</button><button class="secondary" id="reset-cards" type="button">Reset cards</button></div><div class="flashcard-grid" id="flashcard-grid"></div></article>
+<div class="page-nav"><button class="secondary" data-tab-target="challenge-lab" type="button">Back</button><article class="card self-task page-complete" data-task="additional-lab2-flashcards"><div class="task-head"><h3>Page completion</h3><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>Tick this after you finish the flashcards.</p></article><button class="primary" data-tab-target="quiz" type="button">Next</button></div>
+</section><section class="panel" id="quiz">
+<div class="section-title"><p class="eyebrow">Quiz</p><h2>Check your understanding</h2><p>Answer the questions, submit the quiz and review the feedback. Aim for 70% or above.</p></div>
+<form class="quiz-form" id="quiz-form"></form>
+<div class="quiz-actions"><button class="primary" id="submit-quiz" type="button">Submit quiz</button><button class="secondary" id="reset-quiz" type="button">Reset quiz</button></div>
+<p class="result-box" id="quiz-result">Complete the quiz and submit your answers.</p>
+<div class="page-nav"><button class="secondary" data-tab-target="flashcards" type="button">Back</button><article class="card self-task page-complete" data-task="additional-lab2-quiz"><div class="task-head"><h3>Page completion</h3><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>Tick this after you finish the quiz.</p></article><button class="primary" data-tab-target="certificate" type="button">Next</button></div>
+</section><section class="panel" id="certificate">
+<div class="section-title"><p class="eyebrow">Certificate</p><h2>Generate your verifiable completion certificate</h2><p>Complete this page after the quiz. The certificate creates a SHA-256 verification hash from your name, student ID, completion time and page completion percentage.</p></div>
+<article class="card full warning certificate-instructions"><h3>Privacy note</h3><p>This static website does not send your data to a server. The certificate runs in your browser and uses only the details you enter below.</p></article>
+<div class="grid two certificate-instructions"><article class="card certificate-form-card"><h3>Student details</h3><label class="form-label">Full name<input autocomplete="name" class="form-input" id="cert-name" placeholder="Enter your full name" type="text"/></label><label class="form-label">Student ID<input class="form-input" id="cert-id" placeholder="Enter your student ID" type="text"/></label><p class="hint">Enter your name and student ID only. Do not enter passwords, private files or personal document content.</p><button class="primary" id="generate-certificate" type="button">Generate certificate</button><button class="secondary" id="print-certificate" type="button">Print certificate</button><p class="inline-feedback" id="certificate-feedback"></p></article><article class="card"><h3>Verification method</h3><p>The page creates this canonical record:</p><pre><code>module=CMP5358|week=Additional-Lab-2|name=...|studentId=...|time=...|completion=...</code></pre><p>It then calculates a SHA-256 hash. Anyone can verify the certificate by recomputing the hash from the same record.</p></article></div>
+<article aria-live="polite" class="card full certificate-card" id="certificate-output"><div class="certificate-border"><p class="eyebrow">CMP 5358 Lab Tutorials</p><h3>Certificate of Completion</h3><p>This certifies that</p><h2 id="cert-display-name">Student Name</h2><p>Student ID: <strong id="cert-display-id">Student ID</strong></p><p>completed <strong>Additional Lab 2: File Path Traversal Attack</strong>.</p><div class="certificate-meta"><p><strong>Completion time:</strong> <span id="cert-display-time">Not generated yet</span></p><p><strong>Page completion:</strong> <span id="cert-display-progress">0%</span></p></div><p><strong>Verification hash:</strong></p><p class="hash-output" id="cert-hash">Generate the certificate to create a hash.</p><details class="expected-output certificate-record-detail"><summary>Verification record</summary><pre><code id="cert-record">No record generated yet.</code></pre></details></div></article>
+<div class="page-nav"><button class="secondary" data-tab-target="quiz" type="button">Back</button><a class="secondary" href="index.html">Back</a></div>
+</section></main><div aria-live="polite" class="toast" id="toast" role="status"></div><script>window.CMP5358_FLASHCARDS = [{"q": "What does ../ mean in a Unix-style path?", "a": "It refers to the parent directory."}, {"q": "When does path traversal occur?", "a": "It occurs when untrusted input controls a file path and the final resolved path escapes an approved directory."}, {"q": "Why is os.path.join() not enough?", "a": "It joins path strings but does not enforce that the final canonical path remains inside the approved directory."}, {"q": "What is the main CWE for path traversal?", "a": "CWE-22: Improper Limitation of a Pathname to a Restricted Directory."}, {"q": "What is the main confidentiality risk?", "a": "An attacker may read configuration, credentials, source code, logs or personal data accessible to the application process."}, {"q": "Why can URL encoding change a test result?", "a": "Browsers, proxies and frameworks may decode input at different stages before validation."}, {"q": "Does a failed double-encoded payload prove the endpoint is safe?", "a": "No. It only shows that the extra decoding required by that payload did not occur on that request path."}, {"q": "What should you record before changing a filename parameter?", "a": "Record a baseline request, status code, response length and known response content."}, {"q": "What evidence confirms a traversal finding?", "a": "A reproducible request that resolves outside the intended directory and returns content from a known supplied file."}, {"q": "What is the preferred control for a small fixed set of files?", "a": "Map approved identifiers to server-controlled filenames."}, {"q": "What must canonical-path validation check?", "a": "It must check that the final resolved candidate remains inside the approved base directory."}, {"q": "How does least privilege reduce risk?", "a": "It limits which files the application process can read even when path validation fails."}];
+window.CMP5358_QUIZ_QUESTIONS = [{"q": "What does ../ normally mean in a Unix-style path?", "options": ["Current directory", "Parent directory", "File extension", "URL fragment"], "answer": "Parent directory", "feedback": "../ moves path resolution to the parent directory."}, {"q": "Which result most directly confirms path traversal?", "options": ["The URL contains dots", "The final resolved path escapes the approved directory", "The response uses status 200", "The filename is long"], "answer": "The final resolved path escapes the approved directory", "feedback": "The security boundary fails when the resolved path leaves the approved directory."}, {"q": "Why is os.path.join() alone not a security control?", "options": ["It encrypts the path", "It does not enforce a canonical directory boundary", "It blocks every file", "It removes cookies"], "answer": "It does not enforce a canonical directory boundary", "feedback": "Joining path elements does not prove that the resolved result remains within the base directory."}, {"q": "Which CWE is the primary mapping for path traversal?", "options": ["CWE-79", "CWE-89", "CWE-22", "CWE-918"], "answer": "CWE-22", "feedback": "CWE-22 covers improper limitation of a pathname to a restricted directory."}, {"q": "Why can percent encoding affect a traversal test?", "options": ["Different layers may decode input before validation", "It creates a login session", "It changes file permissions", "It disables Burp Suite"], "answer": "Different layers may decode input before validation", "feedback": "You need to understand where and how many times the application stack decodes the input."}, {"q": "What is the preferred design when only a few help pages are valid?", "options": ["Remove one ../ string", "Map fixed identifiers to server-controlled files", "Hide the URL", "Always return status 200"], "answer": "Map fixed identifiers to server-controlled files", "feedback": "A fixed mapping avoids accepting a free-form path from the user."}, {"q": "What must a canonical-path check verify?", "options": ["The page colour", "The final path remains inside the approved base directory", "The browser version", "The cookie length"], "answer": "The final path remains inside the approved base directory", "feedback": "The application should resolve the candidate path and enforce the intended directory boundary."}, {"q": "Why does the practical use supplied mock files?", "options": ["They provide safe, known evidence", "They make the server public", "They disable validation", "They change the operating system"], "answer": "They provide safe, known evidence", "feedback": "Known mock files let you prove the weakness without accessing real operating-system data."}, {"q": "A double-encoded payload fails. What can you conclude?", "options": ["The endpoint is completely safe", "That request path did not perform the extra decoding needed by the payload", "Every encoding is blocked", "The file does not exist anywhere"], "answer": "That request path did not perform the extra decoding needed by the payload", "feedback": "One failed variant does not prove that the application enforces the directory boundary."}, {"q": "What should a secure retest include?", "options": ["Only the rejected attack", "The rejected attack and a working approved file request", "A different public website", "A much larger payload list"], "answer": "The rejected attack and a working approved file request", "feedback": "A good fix blocks traversal without breaking legitimate file access."}];
+window.CMP5358_QUIZ_PASS_MESSAGE = 'Good work. You are ready to generate the certificate.';
+window.CMP5358_QUIZ_FAIL_MESSAGE = 'Review the flashcards and practical tabs, then try again.';</script><script src="app.js"></script></body></html>

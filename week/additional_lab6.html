@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+
+<html lang="en-GB">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Business Logic Vulnerabilities | CMP 5358 Additional Lab 6</title>
+<link href="styles.css" rel="stylesheet"/>
+</head>
+<body data-module-code="CMP5358" data-storage-scope="cmp5358-additional-lab-6" data-week-number="Additional-Lab-6">
+<header class="hero">
+<div class="hero__content">
+<p class="eyebrow">CMP 5358 · Additional Lab 6</p>
+<h1>Business Logic Vulnerabilities</h1>
+<p class="hero__text">Use Burp Suite and the local VulnShop application to test assumptions about prices, quantities, identity, transaction order and coupon use. You will compare normal behaviour with manipulated values or invalid sequences and verify the resulting business impact.</p>
+<div class="hero__actions"><a class="secondary" href="index.html">← Back to main page</a><button class="primary" data-tab-target="overview" type="button">Open Overview</button></div>
+</div>
+<aside aria-label="Additional Lab 6 progress" class="session-card">
+<h2>Your progress</h2>
+<div class="metric"><span id="progress-count">0%</span><small>Section completion</small></div>
+<div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+</aside>
+</header>
+<main class="app-shell">
+<nav aria-label="Additional Lab 6 pages" class="tabs">
+<button class="tab active" data-tab="overview">🏁 Overview</button>
+<button class="tab" data-tab="setup">🖥️ Setup</button>
+<button class="tab" data-tab="method">🧭 Test Method</button>
+<button class="tab" data-tab="price">💷 Price Trust</button>
+<button class="tab" data-tab="quantity">➖ Quantity</button>
+<button class="tab" data-tab="controls">🔐 Controls</button>
+<button class="tab" data-tab="workflow">🔁 Workflow</button>
+<button class="tab" data-tab="coupons">🏷️ Coupons</button>
+<button class="tab" data-tab="defences">🛡️ Defences</button>
+<button class="tab" data-tab="challenge-lab">🏆 Challenge Lab</button>
+<button class="tab" data-tab="flashcards">🧠 Flashcards</button>
+<button class="tab" data-tab="quiz">✅ Quiz</button>
+<button class="tab" data-tab="certificate">🎓 Certificate</button>
+</nav>
+<section class="panel active" id="overview">
+<div class="section-title additional-lab-intro">
+<p class="eyebrow">Additional Lab 6</p>
+<h2>Business Logic Vulnerabilities</h2>
+<p class="lab-subtitle">Trust boundaries, semantic validation, workflow enforcement and complete business state</p>
+<div class="tag-list"><span class="badge">Duration: approximately 3 hours</span><span class="badge">Target: http://127.0.0.1:5000</span><span class="badge">Platform: Kali Linux and Burp Suite</span></div>
+<figure class="inline-figure additional-lab-figure hero-figure"><img alt="Comparison of an intended ecommerce workflow with a manipulated workflow in which a request value is changed and validation is bypassed." loading="eager" src="assets/additional_labs/business_logic/intended_vs_manipulated.png"/><figcaption>Business logic testing compares the intended transaction with behaviour created by a modified input or invalid sequence.</figcaption></figure>
+<div class="warning"><p><strong>Authorised laboratory use only.</strong> Complete every activity against the supplied local VulnShop instance on <code>127.0.0.1</code>. Do not test public websites, university services, live shops or third-party accounts.</p></div>
+</div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab6-overview">
+<div class="task-head"><h2>Overview and learning outcomes</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<p>A business logic vulnerability occurs when an application follows a rule or workflow in a way that permits an unintended outcome. The request may be syntactically valid and the user may be authenticated. The weakness appears because the application trusts the wrong value, accepts an impossible condition, applies a rule inconsistently or permits steps in the wrong order.</p>
+<div class="callout"><p><strong>Core idea</strong></p><p>Start by stating the intended business rule. Then ask what happens when a value, state transition or sequence does not match the developer's assumption.</p></div>
+<h3 class="lab-subheading">By the end of this lab, you should be able to</h3>
+<ul>
+<li>Explain how business logic flaws differ from input-injection vulnerabilities.</li>
+<li>Identify security-relevant values that cross the browser–server trust boundary.</li>
+<li>Use Burp Proxy, HTTP history and Repeater to capture and modify authorised requests.</li>
+<li>Test price, quantity, profile, workflow and coupon assumptions in VulnShop.</li>
+<li>Compare a normal baseline with manipulated behaviour and final application state.</li>
+<li>Explain confidentiality, integrity, availability and business impact.</li>
+<li>Recommend server-side validation, state-machine and transaction controls.</li>
+</ul>
+<div class="table-wrap"><table><thead><tr><th>Activity</th><th>Suggested time</th></tr></thead><tbody>
+<tr><td>Concepts, ethics and setup</td><td>30 minutes</td></tr>
+<tr><td>Experiments 1 and 2</td><td>45 minutes</td></tr>
+<tr><td>Experiment 3</td><td>25 minutes</td></tr>
+<tr><td>Experiments 4 and 5</td><td>65 minutes</td></tr>
+<tr><td>Challenge, flashcards and quiz</td><td>15–30 minutes</td></tr>
+</tbody></table></div>
+</article>
+<article class="card full career-connection">
+<h3>Real-world cyber security and job-market connection</h3>
+<p>Business logic flaws often evade automated scanners because the tool cannot understand the organisation's intended prices, account roles, payment stages or promotion rules. Professionals find these weaknesses by mapping the workflow, questioning assumptions and proving a business effect rather than relying only on unusual HTTP responses.</p>
+<p><strong>Where you will use it: </strong>You will apply these skills in Web Penetration Tester, Application Security Analyst, Product Security Engineer, Security Consultant, Fraud and Abuse Analyst, Secure Software Engineer and Security-focused QA roles.</p>
+</article>
+<div class="page-nav"><a class="secondary" href="index.html">Back</a><button class="primary" data-tab-target="setup" type="button">Next</button></div>
+</section>
+<section class="panel" id="setup">
+<div class="section-title"><p class="eyebrow">Preparation</p><h2>Start VulnShop and configure Burp Suite</h2><p>Keep the application local, log in with the supplied student account and use Burp's embedded browser.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab6-setup">
+<div class="task-head"><h2>1. Prepare the laboratory</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<div class="grid two">
+<article class="card"><h3>Step 1 — Start VulnShop</h3><div class="lab-code"><code>cd Desktop/vulnshop
+chmod +x run.sh
+./run.sh</code></div><p>Keep this terminal open throughout the practical.</p></article>
+<article class="card"><h3>Step 2 — Open the local application</h3><div class="lab-code"><code>http://127.0.0.1:5000</code></div><p>Log in as <code>alice</code> with password <code>alice123</code>, then open:</p><div class="lab-code"><code>http://127.0.0.1:5000/business-logic</code></div></article>
+</div>
+<div class="warning"><p><strong>Server reminder.</strong> A connection error normally means that the VulnShop terminal has closed, the command ran from the wrong directory or another process is using port 5000.</p></div>
+<h3 class="lab-subheading">Step 3 — Configure Burp Suite</h3>
+<ol>
+<li>Open Burp Suite and create a <strong>Temporary project</strong> using Burp defaults.</li>
+<li>Open <strong>Proxy → Intercept</strong> and select <strong>Open browser</strong>.</li>
+<li>Keep interception off while navigating normally.</li>
+<li>Turn interception on immediately before submitting the form that you need to inspect.</li>
+<li>After reviewing or editing the request, select <strong>Forward</strong> and return interception to off.</li>
+<li>Use <strong>Proxy → HTTP history</strong> to locate sent requests.</li>
+<li>Send a request to <strong>Repeater</strong> when you need to resend it and compare controlled changes.</li>
+</ol>
+<div class="warning"><p><strong>Traffic scope.</strong> The authorised target is <code>127.0.0.1:5000</code>. Check the <code>Host</code> header before forwarding any modified request.</p></div>
+<h3 class="lab-subheading">Business logic laboratory routes</h3>
+<div class="table-wrap"><table><thead><tr><th>Purpose</th><th>Local route</th></tr></thead><tbody>
+<tr><td>Experiment hub</td><td><code>/business-logic</code></td></tr>
+<tr><td>Client-controlled price</td><td><code>/business-logic/client-price</code></td></tr>
+<tr><td>Negative quantity</td><td><code>/business-logic/negative-quantity</code></td></tr>
+<tr><td>Inconsistent controls</td><td><code>/business-logic/inconsistent-controls</code></td></tr>
+<tr><td>Workflow validation</td><td><code>/business-logic/workflow</code></td></tr>
+<tr><td>Coupon rules</td><td><code>/business-logic/coupons</code></td></tr>
+</tbody></table></div>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop business logic laboratory hub showing separate experiment cards." src="assets/additional_labs/business_logic/business_logic_hub.png"/><figcaption>The business logic hub provides a separate entry point for each experiment.</figcaption></figure>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="overview" type="button">Back</button><button class="primary" data-tab-target="method" type="button">Next</button></div>
+</section>
+<section class="panel" id="method">
+<div class="section-title"><p class="eyebrow">Testing method</p><h2>Identify the rule before changing the request</h2><p>Establish normal behaviour, change one assumption, verify the final state and explain the missing server-side control.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab6-method">
+<div class="task-head"><h2>2. Apply a repeatable business logic workflow</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<figure class="inline-figure additional-lab-figure"><img alt="Browser controls such as visible fields, hidden fields and HTML minimum values pass through a modifiable HTTP request to a server that must use trusted data and server-side validation." src="assets/additional_labs/business_logic/browser_server_trust_boundary.png"/><figcaption>Values displayed or constrained in the browser remain attacker-controlled. The server must load authoritative data and enforce the rule again.</figcaption></figure>
+<div class="table-wrap"><table><thead><tr><th>Phase</th><th>Question</th><th>Evidence</th></tr></thead><tbody>
+<tr><td>Understand</td><td>What rule is the application trying to enforce?</td><td>Displayed price, account credit, role rule or required workflow.</td></tr>
+<tr><td>Baseline</td><td>What happens during normal use?</td><td>Normal request, response, rejection or success message.</td></tr>
+<tr><td>Manipulate</td><td>Which value or step reflects an assumption?</td><td>Price, quantity, email domain, confirmation URL or coupon history.</td></tr>
+<tr><td>Verify</td><td>Did the server accept an unintended state?</td><td>Changed total, staff access, order state or accepted checkout.</td></tr>
+<tr><td>Explain</td><td>Why did the server-side logic fail?</td><td>Missing validation, incomplete state or inconsistent enforcement.</td></tr>
+<tr><td>Remediate</td><td>Where should the control be enforced?</td><td>Authoritative server data and explicit state transitions.</td></tr>
+</tbody></table></div>
+<div class="callout"><p><strong>Human reasoning matters.</strong></p><p>A scanner may record HTTP 200 without recognising that a customer bought an £89.99 product for £1.00, gained staff access through an unverified email or confirmed an order without payment. Always interpret the result in the context of the intended business rule.</p></div>
+<h3 class="lab-subheading">For every experiment, record</h3>
+<ul><li>The intended rule.</li><li>The normal baseline request and final state.</li><li>The single value or sequence you changed.</li><li>The manipulated response and final application state.</li><li>The CIA and business impact.</li><li>The server-side fix and one regression test.</li></ul>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="setup" type="button">Back</button><button class="primary" data-tab-target="price" type="button">Next</button></div>
+</section>
+<section class="panel" id="price">
+<div class="section-title"><p class="eyebrow">Experiment 1</p><h2>Excessive trust in a client-controlled price</h2><p>A hidden input is not secret or trustworthy. Burp can change the value before it reaches the server.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab6-price">
+<div class="task-head"><h2>3. Manipulate the submitted product price</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<p>The Secure Laptop Bag is displayed at <strong>£89.99</strong>. The account has <strong>£35.00</strong> credit, so the normal order should fail. VulnShop incorrectly calculates the total using a hidden price field supplied by the browser.</p>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop client-controlled price experiment showing the Secure Laptop Bag at £89.99 and £35 account credit." src="assets/additional_labs/business_logic/client_price_baseline.png"/><figcaption>The catalogue price is displayed in the page, but the browser also submits it in the HTTP request.</figcaption></figure>
+<h3 class="lab-subheading">Part A — Establish the baseline</h3>
+<ol><li>Open <code>http://127.0.0.1:5000/business-logic/client-price</code>.</li><li>Reset the experiment.</li><li>With interception off, add one item and select <strong>Place order</strong>.</li><li>Confirm that the server rejects the £89.99 order because it exceeds the £35 credit.</li></ol>
+<h3 class="lab-subheading">Part B — Change only the price</h3>
+<ol><li>Reset the experiment and turn interception on.</li><li>Add one Secure Laptop Bag.</li><li>Locate the submitted price parameter:</li></ol>
+<div class="lab-code"><code>POST /business-logic/client-price/add HTTP/1.1
+Host: 127.0.0.1:5000
+Content-Type: application/x-www-form-urlencoded
+
+price=89.99&amp;quantity=1</code></div>
+<p>Change only the price:</p>
+<div class="lab-code"><code>price=1.00&amp;quantity=1</code></div>
+<ol start="4"><li>Forward the request and switch interception off.</li><li>Confirm that the basket shows a submitted unit price of £1.00.</li><li>Select <strong>Place order</strong> and verify that the order succeeds.</li></ol>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop basket showing the Secure Laptop Bag accepted with a submitted unit price of £1.00." src="assets/additional_labs/business_logic/client_price_manipulated.png"/><figcaption>The manipulated price is accepted, proving that the server trusted a transaction-critical client value.</figcaption></figure>
+<div class="table-wrap"><table><thead><tr><th>Observation</th><th>Meaning</th></tr></thead><tbody>
+<tr><td>The catalogue displays £89.99</td><td>The application knows the authoritative product price.</td></tr>
+<tr><td>The request contains <code>price=89.99</code></td><td>A transaction-critical value crosses the client boundary.</td></tr>
+<tr><td>Changing the value changes the total</td><td>The server uses the submitted value instead of loading the database price.</td></tr>
+<tr><td>Checkout accepts £1.00</td><td>The rule is bypassed and an unintended financial transaction occurs.</td></tr>
+</tbody></table></div>
+<div class="success-callout"><p><strong>Secure design:</strong> Send a stable product identifier and quantity, load the current price from server-side storage, recalculate the total at checkout and reject missing, negative, non-finite or out-of-range values.</p></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="method" type="button">Back</button><button class="primary" data-tab-target="quantity" type="button">Next</button></div>
+</section>
+<section class="panel" id="quantity">
+<div class="section-title"><p class="eyebrow">Experiment 2</p><h2>High-level logic flaw using a negative quantity</h2><p>HTML <code>min=1</code> improves usability, but it cannot prevent a modified request from containing an impossible value.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab6-quantity">
+<div class="task-head"><h2>4. Reduce the basket total with a negative quantity</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<p>The account has £40 credit. A Smart Door Camera costs £89.99 and a Password Notebook costs £3.99. VulnShop accepts negative integers and includes them in the calculation:</p>
+<div class="lab-code"><code>£89.99 + (-13 × £3.99) = £38.12</code></div>
+<ol>
+<li>Open <code>http://127.0.0.1:5000/business-logic/negative-quantity</code> and reset the experiment.</li>
+<li>Add one Smart Door Camera normally.</li>
+<li>Set the Password Notebook quantity to 1, turn interception on and submit the form.</li>
+<li>Modify the captured body:</li>
+</ol>
+<div class="lab-code"><code>POST /business-logic/negative-quantity/add HTTP/1.1
+Host: 127.0.0.1:5000
+Content-Type: application/x-www-form-urlencoded
+
+product=notebook&amp;quantity=-13</code></div>
+<ol start="5"><li>Forward the request and return interception to off.</li><li>Confirm a notebook quantity of −13, a line total of −£51.87 and a cart total of £38.12.</li><li>Place the order and verify that the server accepts the impossible basket.</li></ol>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop basket showing a Password Notebook quantity of minus thirteen and an overall basket total of £38.12." src="assets/additional_labs/business_logic/negative_quantity_result.png"/><figcaption>A negative quantity creates a negative line total and reduces the overall basket.</figcaption></figure>
+<div class="callout"><p><strong>Why this is a semantic flaw</strong></p><p>The request is valid form data and the server can parse the integer. The problem is that a purchase quantity cannot be negative. Validation must check meaning, not only syntax.</p></div>
+<div class="table-wrap"><table><thead><tr><th>Additional input</th><th>Question</th><th>Expected secure behaviour</th></tr></thead><tbody>
+<tr><td><code>quantity=0</code></td><td>Can an order contain a zero-value line?</td><td>Reject or remove the line.</td></tr>
+<tr><td><code>quantity=-1</code></td><td>Can the server accept a negative purchase quantity?</td><td>Reject before changing the basket.</td></tr>
+<tr><td>Very large integer</td><td>Can arithmetic, stock or resource limits be exceeded?</td><td>Apply maximum and stock validation.</td></tr>
+<tr><td>Non-integer value</td><td>How does parsing fail?</td><td>Return a controlled error without changing state.</td></tr>
+</tbody></table></div>
+<div class="success-callout"><p><strong>Secure design:</strong> Validate quantity as an integer within a defined server-side range, check stock and customer limits, reject non-positive line totals and use decimal-safe money calculations.</p></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="price" type="button">Back</button><button class="primary" data-tab-target="controls" type="button">Next</button></div>
+</section>
+<section class="panel" id="controls">
+<div class="section-title"><p class="eyebrow">Experiment 3</p><h2>Inconsistent security controls</h2><p>A security rule must run whenever trusted identity data changes. A new email address must not inherit trust without verification.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab6-controls">
+<div class="task-head"><h2>5. Gain staff access through an unverified email</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<p>VulnShop treats an email ending in <code>@vulnshop.local</code> as proof that an account belongs to staff. The profile update process changes the email and immediately recalculates access without verifying ownership.</p>
+<ol>
+<li>Open <code>http://127.0.0.1:5000/business-logic/inconsistent-controls</code> and reset the experiment.</li>
+<li>Select <strong>Open staff area</strong> and confirm that the server denies access, normally with HTTP 403.</li>
+<li>Change the profile email to:</li>
+</ol>
+<div class="lab-code"><code>alice@vulnshop.local</code></div>
+<ol start="4"><li>Save the profile and confirm that the page reports <strong>Staff access: Granted</strong>.</li><li>Open the staff area again and verify that protected supplier information is now visible.</li></ol>
+<div class="grid two">
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop inconsistent security controls page showing staff access granted after an email change." src="assets/additional_labs/business_logic/inconsistent_controls_profile.png"/><figcaption>The profile update grants staff status after accepting an unverified trusted-domain address.</figcaption></figure>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop staff area accessible after the unverified email change." src="assets/additional_labs/business_logic/staff_area_access.png"/><figcaption>The protected staff area confirms privilege escalation.</figcaption></figure>
+</div>
+<h3 class="lab-subheading">Request analysis</h3>
+<div class="lab-code"><code>POST /business-logic/inconsistent-controls HTTP/1.1
+Host: 127.0.0.1:5000
+Content-Type: application/x-www-form-urlencoded
+
+email=alice%40vulnshop.local</code></div>
+<p>The value is not an injection payload. The flaw lies in assuming that an authenticated user owns any replacement email address entered later.</p>
+<div class="table-wrap"><table><thead><tr><th>Impact area</th><th>Example</th></tr></thead><tbody>
+<tr><td>Confidentiality</td><td>Staff-only supplier or administrative information becomes visible.</td></tr>
+<tr><td>Integrity</td><td>A customer may perform protected staff actions.</td></tr>
+<tr><td>Availability</td><td>Privileged functions could disrupt accounts, products or workflows.</td></tr>
+</tbody></table></div>
+<div class="success-callout"><p><strong>Secure design:</strong> Verify ownership of each new email before using it for authorisation, keep identity attributes separate from roles, grant roles through an approved process and re-evaluate active sessions after security-relevant changes.</p></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="quantity" type="button">Back</button><button class="primary" data-tab-target="workflow" type="button">Next</button></div>
+</section>
+<section class="panel" id="workflow">
+<div class="section-title"><p class="eyebrow">Experiment 4</p><h2>Insufficient workflow validation</h2><p>A final endpoint must verify current server-side state rather than assume that earlier steps occurred.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab6-workflow">
+<div class="task-head"><h2>6. Replay a confirmation request without payment</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<figure class="inline-figure additional-lab-figure"><img alt="Order workflow from basket creation to payment authorisation, order confirmation and dispatch, with a direct replay shortcut bypassing payment." src="assets/additional_labs/business_logic/workflow_state_validation.png"/><figcaption>A secure workflow requires valid payment evidence before order confirmation.</figcaption></figure>
+<h3 class="lab-subheading">Part A — Observe a legitimate workflow</h3>
+<ol>
+<li>Open <code>http://127.0.0.1:5000/business-logic/workflow</code> and reset the experiment.</li>
+<li>Add the affordable Password Notebook and complete the normal purchase.</li>
+<li>In <strong>Proxy → HTTP history</strong>, locate the final request:</li>
+</ol>
+<div class="lab-code"><code>GET /business-logic/workflow/confirmation?order-confirmation=true HTTP/1.1
+Host: 127.0.0.1:5000
+Cookie: session=...</code></div>
+<ol start="4"><li>Send this request to Repeater but do not resend it yet.</li></ol>
+<h3 class="lab-subheading">Part B — Bypass the payment step</h3>
+<ol>
+<li>Add the Smart Door Camera, which costs £89.99 and exceeds the remaining credit.</li>
+<li>Attempt normal payment and confirm that the server rejects it.</li>
+</ol>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop workflow page showing the expensive camera payment rejected because credit is insufficient." src="assets/additional_labs/business_logic/workflow_payment_rejected.png"/><figcaption>The normal payment step rejects the expensive camera.</figcaption></figure>
+<ol start="3"><li>Return to Repeater and resend the saved confirmation request while the expensive camera remains in the basket.</li><li>Refresh the workflow page and confirm that the camera appears as the last confirmed order with <strong>Payment step recorded: No</strong>.</li></ol>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop workflow page showing the Smart Door Camera confirmed despite the payment step not being recorded." src="assets/additional_labs/business_logic/workflow_bypass_confirmed.png"/><figcaption>The final endpoint confirms the camera despite the missing payment transition.</figcaption></figure>
+<div class="table-wrap"><table><thead><tr><th>State or check</th><th>Secure requirement</th><th>Vulnerable behaviour</th></tr></thead><tbody>
+<tr><td>Basket exists</td><td>Necessary but not sufficient</td><td>Used as the only confirmation condition.</td></tr>
+<tr><td>Payment authorised</td><td>Must match the current order and amount</td><td>Not checked.</td></tr>
+<tr><td>Transaction identifier</td><td>Valid, unique and bound to the order</td><td>No transaction evidence required.</td></tr>
+<tr><td>Endpoint replay</td><td>Finalisation must be one-time and idempotent</td><td>The old request applies to a new basket.</td></tr>
+</tbody></table></div>
+<div class="success-callout"><p><strong>Secure design:</strong> Use an explicit server-side state machine, bind payment evidence to the order, user and amount, require state <code>PAID</code> before <code>CONFIRMED</code>, reject replay and make finalisation idempotent.</p></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="controls" type="button">Back</button><button class="primary" data-tab-target="coupons" type="button">Next</button></div>
+</section>
+<section class="panel" id="coupons">
+<div class="section-title"><p class="eyebrow">Experiment 5</p><h2>Flawed enforcement of coupon rules</h2><p>A one-use rule must track complete redemption history. Comparing only with the immediately previous code is insufficient.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab6-coupons">
+<div class="task-head"><h2>7. Bypass coupon reuse controls by alternating codes</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<figure class="inline-figure additional-lab-figure"><img alt="Comparison of a flawed coupon check that only compares the previous code and a correct check that tracks every redeemed code." src="assets/additional_labs/business_logic/coupon_enforcement_comparison.png"/><figcaption>Correct enforcement records every coupon already redeemed for the relevant order, account or campaign.</figcaption></figure>
+<p>The Prototype Payment Ring costs £129.99 and the account has £40 credit. <code>NEWCUST10</code> gives 10% off and <code>SIGNUP20</code> gives 20% off. The application blocks an immediate duplicate but remembers only the last code.</p>
+<h3 class="lab-subheading">Part A — Identify the incomplete rule</h3>
+<ol><li>Open <code>http://127.0.0.1:5000/business-logic/coupons</code> and reset the experiment.</li><li>Add the Prototype Payment Ring.</li><li>Apply <code>NEWCUST10</code> once.</li><li>Apply <code>NEWCUST10</code> again immediately and confirm that the second use is rejected.</li></ol>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop coupon experiment showing one NEWCUST10 coupon applied and immediate reuse blocked." src="assets/additional_labs/business_logic/coupon_immediate_reuse.png"/><figcaption>The application appears to enforce reuse when the same code is submitted twice in a row.</figcaption></figure>
+<h3 class="lab-subheading">Part B — Alternate the codes</h3>
+<p>Continue with this sequence:</p>
+<div class="lab-code"><code>SIGNUP20 → NEWCUST10 → SIGNUP20 → NEWCUST10 → SIGNUP20 → NEWCUST10 → SIGNUP20</code></div>
+<ol><li>Observe that every code is accepted because it differs from the immediately previous code.</li><li>Confirm that the total falls to approximately £34.93.</li><li>Place the order and verify that both coupons were reused several times.</li></ol>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop coupon experiment showing alternating coupon codes and an order total reduced to £34.93." src="assets/additional_labs/business_logic/coupon_alternation_result.png"/><figcaption>Alternating valid codes bypasses the immediate-repeat check.</figcaption></figure>
+<div class="table-wrap"><table><thead><tr><th>Question</th><th>Finding</th></tr></thead><tbody>
+<tr><td>What is the intended scope of one use?</td><td>The order, account, campaign, device or customer must be defined.</td></tr>
+<tr><td>What state is stored?</td><td>Only the most recently applied coupon.</td></tr>
+<tr><td>Why does alternation work?</td><td>The previous value differs even though the current code was redeemed earlier.</td></tr>
+<tr><td>What should be stored?</td><td>Every redeemed code, use counters and campaign constraints.</td></tr>
+<tr><td>What else must be checked?</td><td>Expiry, eligible products, minimum spend, account eligibility and maximum discount.</td></tr>
+</tbody></table></div>
+<div class="success-callout"><p><strong>Secure design:</strong> Store redemption in authoritative server data, enforce uniqueness for the correct scope, apply a maximum total discount and evaluate campaign conditions inside a concurrency-safe transaction.</p></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="workflow" type="button">Back</button><button class="primary" data-tab-target="defences" type="button">Next</button></div>
+</section>
+<section class="panel" id="defences">
+<div class="section-title"><p class="eyebrow">Defensive design</p><h2>Consolidate root causes, impact and controls</h2><p>Secure design keeps authoritative values and workflow state on the server and treats each transition as a rule that must be proved.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab6-defences">
+<div class="task-head"><h2>8. Map each flaw to its root cause and fix</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<div class="table-wrap"><table><thead><tr><th>Root cause</th><th>Observed experiment</th><th>General lesson</th></tr></thead><tbody>
+<tr><td>Trusting a client value</td><td>Price manipulation</td><td>Identifiers may come from the client; authoritative prices must not.</td></tr>
+<tr><td>Validating syntax but not meaning</td><td>Negative quantity</td><td>An integer can still be invalid for the business domain.</td></tr>
+<tr><td>Applying a rule inconsistently</td><td>Email-domain privilege</td><td>Security checks must run whenever trusted identity data changes.</td></tr>
+<tr><td>Assuming previous steps occurred</td><td>Confirmation replay</td><td>Every state transition must prove its prerequisites.</td></tr>
+<tr><td>Tracking incomplete history</td><td>Coupon alternation</td><td>Restrictions require complete state for the intended scope.</td></tr>
+</tbody></table></div>
+<h3 class="lab-subheading">CIA and business impact</h3>
+<div class="table-wrap"><table><thead><tr><th>Experiment</th><th>Confidentiality</th><th>Integrity</th><th>Availability and business</th></tr></thead><tbody>
+<tr><td>Client price</td><td>Unauthorised access to products or services</td><td>Incorrect totals and fraudulent orders</td><td>Financial loss, stock disruption and processing load</td></tr>
+<tr><td>Negative quantity</td><td>Access to unaffordable goods</td><td>Impossible cart and accounting values</td><td>Refund abuse and stock inconsistency</td></tr>
+<tr><td>Inconsistent controls</td><td>Staff information disclosed</td><td>Unauthorised privileged actions</td><td>Account or service disruption</td></tr>
+<tr><td>Workflow bypass</td><td>Goods obtained without authorisation</td><td>Order confirmed without payment</td><td>Reconciliation and fulfilment disruption</td></tr>
+<tr><td>Coupon alternation</td><td>Limited direct disclosure</td><td>Incorrect discount and payment records</td><td>Campaign loss and automated abuse</td></tr>
+</tbody></table></div>
+<h3 class="lab-subheading">Server-side control checklist</h3>
+<ul>
+<li><strong>Authoritative data:</strong> Load prices, roles, eligibility and order state from trusted storage.</li>
+<li><strong>Sensible values:</strong> Validate range, sign, format and relationships between fields.</li>
+<li><strong>Explicit state transitions:</strong> Define permitted moves and verify prerequisites.</li>
+<li><strong>Complete history:</strong> Track all relevant prior uses, not only the last request.</li>
+<li><strong>Atomic transactions:</strong> Validate and update financial or redemption state together.</li>
+<li><strong>Re-authentication and verification:</strong> Require fresh evidence for sensitive identity changes.</li>
+<li><strong>Monitoring:</strong> Alert on negative quantities, repeated discounts, abnormal totals and skipped steps.</li>
+<li><strong>Security testing:</strong> Include misuse cases and unexpected sequences in regression tests.</li>
+</ul>
+<h3 class="lab-subheading">Suggested secure pseudocode</h3>
+<div class="lab-code"><code>product = database.get_product(product_id)
+quantity = parse_integer(request.quantity)
+
+if quantity &lt; 1 or quantity &gt; MAX_PER_ORDER:
+    reject("Invalid quantity")
+
+unit_price = product.current_price
+subtotal = money(unit_price * quantity)
+
+order = database.get_order(order_id, user_id)
+if order.state != "PAID":
+    reject("Payment required")
+
+if coupon_code in order.redeemed_coupons:
+    reject("Coupon already used")
+
+confirm_order_in_atomic_transaction(order)</code></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="coupons" type="button">Back</button><button class="primary" data-tab-target="challenge-lab" type="button">Next</button></div>
+</section>
+<section class="panel" id="challenge-lab">
+<div class="section-title"><p class="eyebrow">Independent practice</p><h2>Challenge lab — test an assumption without the walkthrough</h2><p>Choose one experiment and investigate it from the stated business rule before reading its step-by-step instructions.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab6-challenge">
+<div class="task-head"><h2>9. Complete the business logic challenge</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<div class="warning"><p><strong>Scope.</strong> Use one local experiment only. Reset it before testing and keep all requests on <code>127.0.0.1:5000</code>.</p></div>
+<ol>
+<li>Write the intended rule in one sentence.</li>
+<li>Capture a normal request and identify the parameters or server state that support the rule.</li>
+<li>Create at least three misuse cases, including one boundary value and one unusual sequence.</li>
+<li>Use Repeater to test one controlled change at a time.</li>
+<li>Record the baseline and manipulated application state.</li>
+<li>Explain why the result is a business logic flaw rather than merely unusual input.</li>
+<li>Propose a server-side fix and a regression test.</li>
+</ol>
+<div class="grid two">
+<article class="card"><h3>Your hypothesis</h3><textarea class="note-box" data-note="additional-lab6-challenge-hypothesis" placeholder="State the intended rule, your suspected assumption and the response or state that would prove the flaw."></textarea></article>
+<article class="card"><h3>Your conclusion</h3><textarea class="note-box" data-note="additional-lab6-challenge-conclusion" placeholder="Record the baseline, manipulated result, business impact, root cause, control and regression test."></textarea></article>
+</div>
+<h3 class="lab-subheading">Extension prompts</h3>
+<ul>
+<li>Can two individually valid values become unsafe when combined?</li>
+<li>Can a request be replayed after the application state changes?</li>
+<li>Does the application validate the same rule through every route that changes the data?</li>
+<li>Does the server preserve enough history to enforce a one-use or maximum-use rule?</li>
+<li>Which monitoring signal would help detect repeated abuse?</li>
+</ul>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="defences" type="button">Back</button><button class="primary" data-tab-target="flashcards" type="button">Next</button></div>
+</section>
+<section class="panel" id="flashcards">
+<div class="section-title"><p class="eyebrow">Review</p><h2>Business logic flashcards</h2><p>Select a card to reveal its answer. Shuffle the cards to vary your revision order.</p></div>
+<div class="flashcard-controls"><button class="primary" id="shuffle-cards" type="button">Shuffle cards</button><button class="secondary" id="reset-cards" type="button">Reset cards</button></div>
+<div class="flashcard-grid" id="flashcard-grid"></div>
+<div class="page-nav"><button class="secondary" data-tab-target="challenge-lab" type="button">Back</button><article class="card self-task page-complete" data-task="additional-lab6-flashcards"><div class="task-head"><h3>Page completion</h3><label><input class="task-check" type="checkbox"/> Mark complete</label></div></article><button class="primary" data-tab-target="quiz" type="button">Next</button></div>
+</section>
+<section class="panel" id="quiz">
+<div class="section-title"><p class="eyebrow">Knowledge check</p><h2>Business logic vulnerabilities quiz</h2><p>Submit your answers and review the feedback for each question.</p></div>
+<form id="quiz-form"></form>
+<div class="quiz-actions"><button class="primary" id="submit-quiz" type="button">Submit quiz</button><button class="secondary" id="reset-quiz" type="button">Reset quiz</button></div>
+<p class="result-box" id="quiz-result">Complete the quiz and submit your answers.</p>
+<div class="page-nav"><button class="secondary" data-tab-target="flashcards" type="button">Back</button><article class="card self-task page-complete" data-task="additional-lab6-quiz"><div class="task-head"><h3>Page completion</h3><label><input class="task-check" type="checkbox"/> Mark complete</label></div></article><button class="primary" data-tab-target="certificate" type="button">Next</button></div>
+</section>
+<section class="panel" id="certificate">
+<div class="section-title"><p class="eyebrow">Certificate</p><h2>Generate your verifiable completion certificate</h2><p>Complete this page after the quiz. The page creates a SHA-256 verification hash in your browser.</p></div>
+<article class="card full warning certificate-instructions"><h3>Privacy note</h3><p>This static website does not send your details to a server. Enter only your name and student ID.</p></article>
+<div class="grid two certificate-instructions">
+<article class="card certificate-form-card"><h3>Student details</h3><label class="form-label">Full name<input autocomplete="name" class="form-input" id="cert-name" placeholder="Enter your full name" type="text"/></label><label class="form-label">Student ID<input class="form-input" id="cert-id" placeholder="Enter your student ID" type="text"/></label><button class="primary" id="generate-certificate" type="button">Generate certificate</button><button class="secondary" id="print-certificate" type="button">Print certificate</button><p class="inline-feedback" id="certificate-feedback"></p></article>
+<article class="card"><h3>Verification method</h3><p>The page creates this canonical record and calculates a SHA-256 hash:</p><pre><code>module=CMP5358|week=Additional-Lab-6|name=...|studentId=...|time=...|completion=...</code></pre></article>
+</div>
+<article aria-live="polite" class="card full certificate-card" id="certificate-output"><div class="certificate-border"><p class="eyebrow">CMP 5358 Lab Tutorials</p><h3>Certificate of Completion</h3><p>This certifies that</p><h2 id="cert-display-name">Student Name</h2><p>Student ID: <strong id="cert-display-id">Student ID</strong></p><p>completed <strong>Additional Lab 6: Business Logic Vulnerabilities</strong>.</p><div class="certificate-meta"><p><strong>Completion time:</strong> <span id="cert-display-time">Not generated yet</span></p><p><strong>Page completion:</strong> <span id="cert-display-progress">0%</span></p></div><p><strong>Verification hash:</strong></p><p class="hash-output" id="cert-hash">Generate the certificate to create a hash.</p><details class="expected-output certificate-record-detail"><summary>Verification record</summary><pre><code id="cert-record">No record generated yet.</code></pre></details></div></article>
+<div class="page-nav"><button class="secondary" data-tab-target="quiz" type="button">Back</button><a class="secondary" href="index.html">Back</a></div>
+</section>
+</main>
+<div aria-live="polite" class="toast" id="toast" role="status"></div>
+<script>
+window.CMP5358_FLASHCARDS = [
+{q:'What is a business logic vulnerability?',a:'A flaw in a rule or workflow that allows a valid function to produce an unintended outcome.'},
+{q:'Why is a hidden HTML field still attacker-controlled?',a:'The browser sends it in the HTTP request, and the user can modify that request before it reaches the server.'},
+{q:'What is an authoritative value?',a:'A value loaded from trusted server-side state, such as a database price, verified role or current order status.'},
+{q:'What is semantic validation?',a:'Checking whether a value makes sense for the business domain, not only whether it can be parsed.'},
+{q:'Why is a negative quantity a high-level logic flaw?',a:'The integer is syntactically valid, but a purchase quantity below zero is impossible in the intended business process.'},
+{q:'What failed in the trusted-domain email experiment?',a:'An unverified identity attribute directly controlled authorisation and granted a staff role.'},
+{q:'What is a workflow state machine?',a:'An explicit model of allowed states and transitions, including the evidence required for each change.'},
+{q:'What is request replay?',a:'Resending a previously valid request in a different application state or context.'},
+{q:'What does idempotent finalisation mean?',a:'Repeating the final request does not create an additional or different outcome.'},
+{q:'Why did alternating coupon codes work?',a:'The application stored only the immediately previous code rather than the complete redemption history.'},
+{q:'What is coupon redemption scope?',a:'The order, account, campaign, device or customer context in which use must be counted.'},
+{q:'Why establish a baseline?',a:'It shows normal behaviour before modification and makes the manipulated effect interpretable.'},
+{q:'What is the strongest proof of a logic flaw?',a:'A reproducible unintended application state, such as an altered price, privilege change or unpaid confirmed order.'},
+{q:'Which CIA property is directly affected by altered prices?',a:'Integrity, because transaction and accounting values no longer reflect the intended rule.'},
+{q:'Where should business rules be enforced?',a:'On the server using authoritative data, explicit state transitions and atomic updates.'},
+{q:'What should a regression test verify?',a:'The misuse case is rejected and no protected state changes after the fix.'}
+];
+
+window.CMP5358_QUIZ_QUESTIONS = [
+{q:'Which value should the server use to calculate a product total?',options:['Hidden field','URL value','Database price','Browser display'],answer:'Database price',feedback:'The server should load the authoritative current price from trusted storage.'},
+{q:'What is the main weakness in the negative-quantity experiment?',options:['SQL injection','Missing semantic range validation','Cross-site scripting','Weak encryption'],answer:'Missing semantic range validation',feedback:'The value parses as an integer but is invalid for the purchase domain.'},
+{q:'Why does the staff-email experiment create privilege escalation?',options:['The password is weak','The email is reflected','An unverified attribute controls authorisation','The page uses HTTP'],answer:'An unverified attribute controls authorisation',feedback:'Identity attributes must be verified before they influence roles or access.'},
+{q:'What should the order-confirmation endpoint verify?',options:['A basket exists only','The user visited the homepage','The current order has valid payment evidence','The browser used JavaScript'],answer:'The current order has valid payment evidence',feedback:'Confirmation must prove the required server-side state transition.'},
+{q:'Why can alternating coupons succeed?',options:['The codes are encrypted','Only the immediately previous code is stored','Cookies are disabled','The product is unreleased'],answer:'Only the immediately previous code is stored',feedback:'A one-use rule needs complete redemption history for the correct scope.'},
+{q:'Which Burp tool is best for repeatedly resending one modified request?',options:['Repeater','Decoder','Comparer','Logger'],answer:'Repeater',feedback:'Repeater supports controlled manual changes and response comparison.'},
+{q:'Which CIA property is most directly affected by an altered price?',options:['Confidentiality','Integrity','Availability','Non-repudiation'],answer:'Integrity',feedback:'The order and financial data no longer reflect the authorised value.'},
+{q:'What is the strongest general prevention?',options:['Hide the form','Minify JavaScript','Enforce authoritative rules server-side','Rename parameters'],answer:'Enforce authoritative rules server-side',feedback:'Client controls cannot replace server-side validation and state enforcement.'},
+{q:'Why establish a normal baseline?',options:['To increase traffic','To understand normal behaviour before interpreting differences','To disable cookies','To avoid authentication'],answer:'To understand normal behaviour before interpreting differences',feedback:'A baseline helps link a controlled change to the resulting effect.'},
+{q:'Which is a suitable regression test?',options:['Negative quantities are rejected and state remains unchanged','The page colour is blue','The URL is short','The button is visible'],answer:'Negative quantities are rejected and state remains unchanged',feedback:'A security regression test should reproduce the misuse case and verify that no protected state changes.'}
+];
+window.CMP5358_QUIZ_PASS_MESSAGE = 'Good work. You may now generate the Business Logic Vulnerabilities certificate.';
+window.CMP5358_QUIZ_FAIL_MESSAGE = 'Review the experiments, defensive controls and flashcards, then try again.';
+</script>
+<script src="app.js"></script>
+</body>
+</html>

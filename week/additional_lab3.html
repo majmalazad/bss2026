@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+
+<html lang="en-GB">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Fuzzing Attack | CMP 5358 Additional Lab 3</title>
+<link href="styles.css" rel="stylesheet"/>
+</head>
+<body data-module-code="CMP5358" data-storage-scope="cmp5358-additional-lab-3" data-week-number="Additional-Lab-3">
+<header class="hero">
+<div class="hero__content">
+<p class="eyebrow">CMP 5358 · Additional Lab 3</p>
+<h1>Fuzzing Attack</h1>
+<p class="hero__text">Use Burp Intruder to vary the password field of a local VulnShop login request. You will build a failed-response baseline, identify an anomalous response and verify the result manually.</p>
+<div class="hero__actions"><a class="secondary" href="index.html">← Back to main page</a><button class="primary" data-tab-target="overview" type="button">Open Overview</button></div>
+</div>
+<aside aria-label="Additional Lab 3 progress" class="session-card">
+<h2>Your progress</h2><div class="metric"><span id="progress-count">0%</span><small>Section completion</small></div>
+<div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+</aside>
+</header>
+<main class="app-shell">
+<nav aria-label="Additional Lab 3 pages" class="tabs">
+<button class="tab active" data-tab="overview">🏁 Overview</button>
+<button class="tab" data-tab="environment">🖥️ Lab Setup</button>
+<button class="tab" data-tab="request-concepts">📨 Request &amp; Concepts</button>
+<button class="tab" data-tab="capture">🎯 Capture Baseline</button>
+<button class="tab" data-tab="configure">⚙️ Configure Intruder</button>
+<button class="tab" data-tab="attack">🚀 Run Attack</button>
+<button class="tab" data-tab="analysis">🔍 Analyse &amp; Verify</button>
+<button class="tab" data-tab="search-fuzzing">🧪 Search Fuzzing</button>
+<button class="tab" data-tab="defence">🛡️ Defence &amp; Review</button>
+<button class="tab" data-tab="challenge-lab">🏆 Challenge Lab</button>
+<button class="tab" data-tab="flashcards">🧠 Flashcards</button>
+<button class="tab" data-tab="quiz">✅ Quiz</button>
+<button class="tab" data-tab="certificate">🎓 Certificate</button>
+</nav>
+<section class="panel active" id="overview">
+<div class="section-title additional-lab-intro">
+<p class="eyebrow">Additional Lab 3</p><h2>Fuzzing Attack</h2>
+<p class="lab-subtitle">Introductory Fuzzing with Burp Intruder in VulnShop</p>
+<div class="tag-list"><span class="badge">Duration: 3 hours</span><span class="badge">Target: http://127.0.0.1:5000</span><span class="badge">Tool: Burp Suite</span></div>
+<figure class="inline-figure additional-lab-figure hero-figure"><img alt="Five-stage Burp Intruder fuzzing workflow: capture, mark, fuzz, compare and verify." loading="eager" src="assets/additional_labs/fuzzing/burp_intruder_workflow.png"/><figcaption>Intruder automates request variation, but you must compare and verify the results.</figcaption></figure>
+<div class="warning"><p><strong>Authorised use only.</strong> Perform this activity only against the local VulnShop teaching application on <code>127.0.0.1</code>. Use the supplied account and short payload lists. Do not test public websites, university systems or other users' accounts.</p></div>
+</div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab3-overview">
+<div class="task-head"><h2>Overview and learning outcomes</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<p>Fuzzing sends a controlled set of test inputs to an application and compares the responses. Security testers use it to find unexpected behaviour, weak input validation, authentication weaknesses and inconsistent error handling.</p>
+<p>In this lab, Burp Intruder replaces one selected password value with each entry from a small approved list. You will compare status codes, response lengths, content, redirects and cookies. You must then verify any apparent success manually.</p>
+<h3 class="lab-subheading">By the end of this lab, you should be able to</h3>
+<ul><li>Capture a failed authentication request with Burp Proxy.</li><li>Identify the username and password parameters.</li><li>Configure one password payload position and a Simple list payload set.</li><li>Run a Sniper attack against the authorised local account.</li><li>Establish a normal failed-response baseline.</li><li>Use status, length, body text, redirects, cookies and application state to identify anomalies.</li><li>Use Grep - Match and manual verification to avoid false conclusions.</li><li>Explain controls that reduce automated password guessing.</li></ul>
+</article><article class="card full career-connection"><h3>Real-world cyber security and job-market connection</h3><p>Fuzzing helps professionals test how applications respond to unexpected input at scale. The important workplace skill is not only generating requests, but establishing a baseline, identifying anomalies and confirming results manually.</p><p><strong>Where you will use it: </strong>You will use this workflow in Penetration Testing, Application Security, Security Testing, Quality Assurance and Vulnerability Research roles.</p></article>
+<div class="page-nav"><a class="secondary" href="index.html">Back</a><button class="primary" data-tab-target="environment" type="button">Next</button></div>
+</section>
+<section class="panel" id="environment">
+<div class="section-title"><p class="eyebrow">Additional Lab 3</p><h2>Lab setup</h2><p>Start the existing local VulnShop application, confirm the teaching account and configure Burp's browser.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab3-environment">
+<div class="task-head"><h2>1. Start the teaching environment</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<div class="grid two"><div><h3>Current VulnShop values</h3><div class="table-wrap"><table><thead><tr><th>Item</th><th>Value</th></tr></thead><tbody><tr><td>Target</td><td><code>http://127.0.0.1:5000</code></td></tr><tr><td>Login page</td><td><code>http://127.0.0.1:5000/login</code></td></tr><tr><td>Authorised username</td><td><code>alice</code></td></tr><tr><td>Starting password</td><td><code>incorrect-password</code></td></tr><tr><td>Expected valid destination</td><td><code>/account</code></td></tr></tbody></table></div></div>
+<div><h3>Start VulnShop</h3><p>Open a terminal and run:</p><div class="lab-code"><code>cd Desktop/vulnshop
+chmod +x run.sh
+./run.sh</code></div><div class="callout"><p><strong>Keep the terminal open.</strong> A connection error usually means that VulnShop stopped or you used the wrong directory.</p></div></div></div>
+<h3 class="lab-subheading">Reset only when required</h3><p>Use one of these local reset options if an earlier session remains logged in:</p><div class="lab-code"><code>./reset_db.sh</code></div><p>or open <code>http://127.0.0.1:5000/reset</code>. Do not reset a shared instance while another student uses it.</p>
+<h3 class="lab-subheading">Configure Burp Suite</h3>
+<div class="steps"><div class="step"><strong>Start Burp Suite.</strong><p>Open it from the Kali applications menu or run <code>burpsuite</code>.</p></div><div class="step"><strong>Create a temporary project.</strong><p>Select <em>Temporary project</em>, <em>Use Burp defaults</em>, then <em>Start Burp</em>.</p></div><div class="step"><strong>Open Burp's browser.</strong><p>Go to <strong>Proxy → Intercept → Open browser</strong>.</p></div><div class="step"><strong>Use interception only when needed.</strong><p>Leave Intercept off while navigating. Turn it on immediately before submitting the login form. Forward any paused request before continuing.</p></div></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="overview" type="button">Back</button><button class="primary" data-tab-target="request-concepts" type="button">Next</button></div>
+</section>
+<section class="panel" id="request-concepts">
+<div class="section-title"><p class="eyebrow">Additional Lab 3</p><h2>Understand the login request and Intruder concepts</h2><p>Identify the data that enters the application and choose the correct attack type.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab3-request-concepts">
+<div class="task-head"><h2>2. Login request and success indicators</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<p>VulnShop uses a form-based POST request. A failed attempt with the authorised username resembles:</p>
+<div class="lab-code"><code>POST /login HTTP/1.1
+Host: 127.0.0.1:5000
+Content-Type: application/x-www-form-urlencoded
+
+username=alice&amp;password=incorrect-password</code></div>
+<p>The important parameters are <code>username</code> and <code>password</code>. The normal failure message is:</p><div class="expected-output"><p><strong>Expected output</strong></p><pre><code>The username or password is incorrect.</code></pre></div>
+<h3 class="lab-subheading">Useful success indicators</h3><ul><li><code>HTTP 302 Found</code> instead of the normal failed response.</li><li><code>Location: /account</code>.</li><li>A changed session cookie.</li><li>The failure message is absent.</li><li>The browser displays the authenticated account page.</li><li>A Logout option and the username <code>alice</code> appear.</li></ul>
+<div class="warning"><p><strong>Do not rely on one indicator.</strong> A different status, length or cookie is interesting, but it does not prove authenticated access. Confirm the final application state.</p></div>
+<h3 class="lab-subheading">Burp Intruder concepts</h3>
+<div class="grid three"><article class="card"><h3>Base request</h3><p>The original HTTP request that Intruder modifies.</p></article><article class="card"><h3>Payload position</h3><p>The exact value that Intruder replaces, shown as <code>§incorrect-password§</code> in Burp.</p></article><article class="card"><h3>Payload set</h3><p>The list of candidate inputs inserted into the selected position.</p></article></div>
+<div class="table-wrap"><table><thead><tr><th>Attack type</th><th>Use in this lab</th></tr></thead><tbody><tr><td><strong>Sniper</strong></td><td>One payload set against the password field. Use this option.</td></tr><tr><td>Battering ram</td><td>Uses the same payload in several positions. Not required.</td></tr><tr><td>Pitchfork</td><td>Uses several lists in parallel. Not required.</td></tr><tr><td>Cluster bomb</td><td>Tests combinations across positions and can generate many requests. Do not use in this lab.</td></tr></tbody></table></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="environment" type="button">Back</button><button class="primary" data-tab-target="capture" type="button">Next</button></div>
+</section>
+<section class="panel" id="capture">
+<div class="section-title"><p class="eyebrow">Practical</p><h2>Capture a failed-login baseline</h2><p>Seed Burp with one correctly structured request before you configure Intruder.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab3-capture">
+<div class="task-head"><h2>3. Exercise 1: Seed Burp with a failed login</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<div class="steps"><div class="step"><strong>Open the login page.</strong><p>Browse to <code>http://127.0.0.1:5000/login</code>.</p></div><div class="step"><strong>Enter the authorised values.</strong><p>Username: <code>alice</code><br/>Password: <code>incorrect-password</code>. Do not submit yet.</p></div><div class="step"><strong>Enable interception.</strong><p>In Burp, change <strong>Proxy → Intercept</strong> to <strong>Intercept is on</strong>.</p></div><div class="step"><strong>Submit the form.</strong><p>Burp should pause the outgoing POST request.</p></div><div class="step"><strong>Inspect the request.</strong><p>Confirm the method, path, host, content type, username, password and any session cookie.</p></div><div class="step"><strong>Forward and switch interception off.</strong><p>Click <strong>Forward</strong>, then turn interception off.</p></div><div class="step"><strong>Record the failure baseline.</strong><p>Record the exact failure message, status code and response length.</p></div></div>
+<div class="expected-output"><p><strong>Expected output</strong></p><pre><code>The username or password is incorrect.</code></pre></div>
+<h3 class="lab-subheading">Baseline notes</h3><textarea class="note-box" data-note="additional-lab3-baseline" placeholder="Record the status code, response length, page title, failure message, redirect information and cookie observations."></textarea>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="request-concepts" type="button">Back</button><button class="primary" data-tab-target="configure" type="button">Next</button></div>
+</section>
+<section class="panel" id="configure">
+<div class="section-title"><p class="eyebrow">Practical</p><h2>Configure Burp Intruder</h2><p>Send the captured request to Intruder, select only the password value and add the approved payload list.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab3-configure">
+<div class="task-head"><h2>4. Exercises 2–4: Configure the attack</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<h3>Send the request to Intruder</h3><ol><li>Open <strong>Proxy → HTTP history</strong> and locate the POST request to <code>/login</code>.</li><li>Review the status, length, page title, failure text, redirect and Set-Cookie headers.</li><li>Right-click the request and select <strong>Send to Intruder</strong>.</li><li>Open the new Intruder attack tab.</li></ol>
+<h3 class="lab-subheading">Select the password payload position</h3><ol><li>Open <strong>Positions</strong>.</li><li>Select <strong>Clear positions</strong>.</li><li>Highlight only <code>incorrect-password</code>. Do not include <code>password=</code> or the ampersand.</li><li>Select <strong>Add position</strong>.</li><li>Confirm that the username remains fixed.</li></ol>
+<div class="grid two"><div class="callout success-callout"><p><strong>Correct</strong></p><div class="lab-code"><code>username=alice&amp;password=§incorrect-password§</code></div></div><div class="warning"><p><strong>Incorrect</strong></p><div class="lab-code"><code>username=§alice§&amp;password=§incorrect-password§</code></div></div></div>
+<h3 class="lab-subheading">Add the approved payload list</h3><ol><li>Set <strong>Attack type</strong> to <strong>Sniper</strong>.</li><li>Open <strong>Payloads</strong>.</li><li>Use Payload set 1 and Payload type <strong>Simple list</strong>.</li><li>Paste or load the list below. Keep each value on a separate line.</li></ol>
+<p><a class="secondary" download="" href="assets/additional_labs/fuzzing/fuzzing-passwords.txt">Download approved password payload list</a></p>
+<div class="lab-code"><code>123456
+password
+password1
+letmein
+qwerty
+welcome
+admin123
+summer2026
+training123
+alice123
+SecureLab26!</code></div>
+<div class="warning"><p><strong>Local teaching account only.</strong> The list contains one valid password for <code>alice</code>. Do not add large public password lists or test other accounts.</p></div>
+<h3 class="lab-subheading">Configuration check</h3><ul><li>Each password appears on a separate line.</li><li>No blank entries exist.</li><li>Only one payload set exists.</li><li>The password value is the only payload position.</li><li>The username remains <code>alice</code>.</li></ul>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="capture" type="button">Back</button><button class="primary" data-tab-target="attack" type="button">Next</button></div>
+</section>
+<section class="panel" id="attack">
+<div class="section-title"><p class="eyebrow">Practical</p><h2>Run the Intruder attack</h2><p>Generate the controlled requests and use the results table to find a response that breaks the normal failure pattern.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab3-attack">
+<div class="task-head"><h2>5. Exercise 5: Run and compare</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<ol><li>Select <strong>Start attack</strong>. Burp Suite Community Edition may send requests slowly; this is normal.</li><li>Review the results table.</li><li>Sort by <strong>Status</strong> and <strong>Length</strong>.</li><li>Open several failed responses to establish the repeated pattern.</li><li>Identify any response with a different status, redirect, body text or cookie behaviour.</li></ol>
+<div class="table-wrap"><table><thead><tr><th>Column</th><th>Meaning</th></tr></thead><tbody><tr><td>Request</td><td>Sequence number for the generated request.</td></tr><tr><td>Payload</td><td>Password value inserted into the selected position.</td></tr><tr><td>Status</td><td>HTTP response status code.</td></tr><tr><td>Error</td><td>Whether Burp encountered a network error.</td></tr><tr><td>Timeout</td><td>Whether the server failed to respond in time.</td></tr><tr><td>Length</td><td>Approximate response size.</td></tr><tr><td>Time</td><td>Approximate server response time.</td></tr></tbody></table></div>
+<h3 class="lab-subheading">Illustrative comparison</h3><div class="table-wrap"><table><thead><tr><th>Payload</th><th>Status</th><th>Length</th><th>Observed indicator</th></tr></thead><tbody><tr><td>123456</td><td>200</td><td>Similar to failures</td><td>Failure message present</td></tr><tr><td>password</td><td>200</td><td>Similar to failures</td><td>Failure message present</td></tr><tr><td>welcome</td><td>200</td><td>Similar to failures</td><td>Failure message present</td></tr><tr><td>Candidate value</td><td>302</td><td>Often shorter</td><td><code>Location: /account</code></td></tr></tbody></table></div>
+<figure class="inline-figure additional-lab-figure hero-figure"><img alt="Comparison between repeated failed login responses and an interesting response." src="assets/additional_labs/fuzzing/failure_pattern_anomaly.png"/><figcaption>Establish the repeated failure pattern before you investigate an anomalous response.</figcaption></figure>
+<div class="warning"><p><strong>Do not rely on response length alone.</strong> Response lengths can vary because templates, headers and session values change.</p></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="configure" type="button">Back</button><button class="primary" data-tab-target="analysis" type="button">Next</button></div>
+</section>
+<section class="panel" id="analysis">
+<div class="section-title"><p class="eyebrow">Practical</p><h2>Analyse and verify the candidate</h2><p>Use several response characteristics, add a Grep - Match rule and confirm the final application state.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab3-analysis">
+<div class="task-head"><h2>6. Analyse the results</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<h3>Establish the normal failure pattern</h3><ul><li>Do several incorrect payloads return the same status?</li><li>Do they have similar lengths?</li><li>Do they contain the exact failure message?</li><li>Do they redirect to the same location?</li><li>Do they set similar cookies?</li></ul>
+<h3 class="lab-subheading">Investigate anomalies</h3><p>An interesting result may have a different status, a redirect to <code>/account</code>, no failure message, a changed session cookie, account-related content or a noticeably different response time.</p>
+<h3 class="lab-subheading">Add Grep - Match</h3><ol><li>Open the Intruder attack settings.</li><li>Find <strong>Grep - Match</strong>.</li><li>Add the exact text <code>The username or password is incorrect.</code></li><li>Run the attack again.</li><li>Investigate the response that does not match the normal failure text.</li></ol>
+<div class="table-wrap"><table><thead><tr><th>Payload</th><th>Status</th><th>Failure message match</th></tr></thead><tbody><tr><td>123456</td><td>200</td><td>Yes</td></tr><tr><td>password</td><td>200</td><td>Yes</td></tr><tr><td>training123</td><td>200</td><td>Yes</td></tr><tr><td>Candidate value</td><td>302</td><td>No</td></tr></tbody></table></div>
+<h3 class="lab-subheading">Verify manually</h3><div class="grid two"><article class="card"><h3>Method 1: Repeater</h3><ol><li>Right-click the interesting Intruder request.</li><li>Select <strong>Send to Repeater</strong>.</li><li>Send the request.</li><li>Inspect status, Location, cookies and body.</li><li>Follow the redirect in the browser.</li></ol></article><article class="card"><h3>Method 2: Login form</h3><ol><li>Return to <code>/login</code>.</li><li>Enter <code>alice</code> and the candidate password.</li><li>Submit the form.</li><li>Confirm that <code>/account</code> opens.</li></ol></article></div>
+<div class="callout success-callout"><p><strong>Verification standard</strong></p><ul><li>The browser opens <code>/account</code>.</li><li>The page shows the username <code>alice</code>.</li><li>Account details or orders are visible.</li><li>A Logout control is present.</li><li>The failed-login message is absent.</li></ul></div>
+<h3 class="lab-subheading">Results interpretation process</h3><div class="lab-code"><code>Capture a normal request
+        ↓
+Choose one payload position
+        ↓
+Send a small controlled payload list
+        ↓
+Establish the normal response pattern
+        ↓
+Identify anomalous responses
+        ↓
+Inspect status, headers, body and cookies
+        ↓
+Verify manually
+        ↓
+Record the conclusion</code></div>
+<h3 class="lab-subheading">Your conclusion</h3><textarea class="note-box large-note" data-note="additional-lab3-conclusion" placeholder="Explain the repeated failure pattern, the anomalous response, the manual verification and your final conclusion."></textarea>
+</article>
+<article class="card full additional-lab-section self-task" data-task="additional-lab3-troubleshooting"><div class="task-head"><h2>7. Common problems</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div><div class="table-wrap"><table><thead><tr><th>Problem</th><th>Likely cause and action</th></tr></thead><tbody><tr><td>Burp does not capture the request</td><td>Use Burp's embedded browser, enable interception for submission or locate the request in HTTP history.</td></tr><tr><td>VulnShop does not load</td><td>Keep the <code>./run.sh</code> terminal open and confirm the target is <code>127.0.0.1:5000</code>.</td></tr><tr><td>Intruder changes several fields</td><td>Clear automatic positions, then mark only the password value.</td></tr><tr><td>Every response looks the same</td><td>Compare redirects, cookies, failure text and final application state rather than length alone.</td></tr><tr><td>302 appears for every payload</td><td>Compare Location values and follow the redirect. Not every redirect means success.</td></tr><tr><td>Requests are slow</td><td>Community Edition limits Intruder speed. Keep the list small.</td></tr><tr><td>The browser remains logged in</td><td>Log out or reset the local application before establishing the baseline.</td></tr></tbody></table></div></article>
+<div class="page-nav"><button class="secondary" data-tab-target="attack" type="button">Back</button><button class="primary" data-tab-target="search-fuzzing" type="button">Next</button></div>
+</section>
+<section class="panel" id="search-fuzzing">
+<div class="section-title"><p class="eyebrow">Extension</p><h2>Fuzz the product search input</h2><p>Use a small harmless list to explore how different input types affect the product search response.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab3-search">
+<div class="task-head"><h2>8. Extension exercise: product search fuzzing</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<ol><li>Open <code>http://127.0.0.1:5000/products?q=keyboard</code>.</li><li>Locate the GET request in HTTP history and send it to Intruder.</li><li>Clear automatic positions and mark only the value of <code>q</code>.</li><li>Use Sniper with the supplied Simple list.</li><li>Compare each response with the normal search baseline.</li></ol>
+<p><a class="secondary" download="" href="assets/additional_labs/fuzzing/product-search-payloads.txt">Download search payload list</a></p>
+<div class="lab-code"><code>keyboard
+no-match
+%
+'
+"
+../
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</code></div>
+<div class="table-wrap"><table><thead><tr><th>Input type</th><th>Possible observation</th><th>Meaning to investigate</th></tr></thead><tbody><tr><td>Normal term</td><td>200 and one or more products</td><td>Expected baseline</td></tr><tr><td>No-match term</td><td>200 and no results</td><td>Expected empty state</td></tr><tr><td>Wildcard character</td><td>Broader result set</td><td>Input affects search semantics</td></tr><tr><td>Single quote</td><td>Error or different response</td><td>Potential unsafe query handling</td></tr><tr><td>Long string</td><td>Normal response or validation issue</td><td>Boundary handling</td></tr><tr><td>Path-like text</td><td>Usually no special effect</td><td>Context matters; not every payload applies everywhere</td></tr></tbody></table></div>
+<div class="warning"><p><strong>Keep the extension controlled.</strong> Do not turn this into a large payload attack. The objective is to identify anomalous input handling and explain the result.</p></div>
+<textarea class="note-box" data-note="additional-lab3-search-notes" placeholder="Record which search input differed from the normal baseline and explain what the result does or does not prove."></textarea>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="analysis" type="button">Back</button><button class="primary" data-tab-target="defence" type="button">Next</button></div>
+</section>
+<section class="panel" id="defence">
+<div class="section-title"><p class="eyebrow">Review</p><h2>Defence, security impact and analyst judgement</h2><p>Connect the practical result to layered controls, CIA impact and reliable security analysis.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab3-defence">
+<div class="task-head"><h2>9. Defensive controls</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<p>A real application should combine preventative, detective and recovery controls:</p><div class="grid three"><article class="card control"><h3>Prevent</h3><ul><li>Rate limiting and progressive delays</li><li>Carefully designed temporary lockout</li><li>Multi-factor authentication</li><li>Strong password and breached-password checks</li></ul></article><article class="card control"><h3>Detect</h3><ul><li>Unusual-login monitoring</li><li>Repeated-failure alerts</li><li>IP, device and behavioural risk signals</li><li>Cross-account failure analysis</li></ul></article><article class="card control"><h3>Recover</h3><ul><li>Secure session rotation after login</li><li>Account recovery controls</li><li>Incident investigation logs</li><li>User notification where appropriate</li></ul></article></div>
+<h3 class="lab-subheading">Security impact</h3><div class="table-wrap"><table><thead><tr><th>Security property</th><th>Possible impact</th></tr></thead><tbody><tr><td>Confidentiality</td><td>An authenticated attacker may access personal details, messages, orders, addresses or administrative data.</td></tr><tr><td>Integrity</td><td>An attacker may change profile information, orders, preferences or transactions.</td></tr><tr><td>Availability</td><td>Repeated attempts may consume resources, trigger lockouts or deny legitimate access.</td></tr></tbody></table></div>
+<div class="warning"><p><strong>Availability caution.</strong> Large password lists are unnecessary for this lab and can create avoidable load.</p></div>
+<h3 class="lab-subheading">Analyst judgement</h3><p>Intruder automates request generation and result collection. It does not decide whether a response proves successful authentication. You must consider the baseline, status, length, headers, redirects, cookies, response content, page title, application state and manual verification.</p>
+<h3 class="lab-subheading">Practical review</h3><ol><li>Capture one failed login request.</li><li>Mark only the password value.</li><li>Run a controlled Sniper attack.</li><li>Find the repeated failure pattern.</li><li>Use Grep - Match to locate an anomaly.</li><li>Inspect and verify the candidate manually.</li><li>Explain which controls would reduce the attack.</li></ol>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="search-fuzzing" type="button">Back</button><button class="primary" data-tab-target="challenge-lab" type="button">Next</button></div>
+</section>
+<section class="panel" id="challenge-lab">
+<div class="section-title"><p class="eyebrow">Additional Lab 3</p><h2>Independent challenge lab</h2><p>Identify the candidate without relying on response length and justify your conclusion.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab3-challenge">
+<div class="task-head"><h2>10. Challenge: Find the anomaly through response content</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<div class="callout"><p><strong>Scenario</strong></p><p>Your response lengths vary because the application generates different session data. You therefore cannot use length as your main sorting method.</p></div>
+<h3 class="lab-subheading">Your tasks</h3><ol><li>Configure Intruder to highlight the standard failure message.</li><li>Run the approved local payload list.</li><li>Identify the candidate without sorting by response length.</li><li>Explain which response characteristic first revealed the candidate.</li><li>State whether that characteristic alone proved success.</li><li>Verify the candidate through Repeater and the browser.</li><li>Explain which defensive control would most effectively slow this activity.</li><li>Assess whether the error message reveals whether the username exists.</li><li>Explain how rate limiting would change your test plan.</li></ol>
+<h3 class="lab-subheading">Challenge hints</h3><ul><li>Most incorrect passwords should match the exact failure text.</li><li>A 302 response often has little body content. Inspect its Location header.</li><li>Manual access to <code>/account</code> provides the strongest verification.</li><li>Stop if the local application begins to throttle or lock the account.</li></ul>
+<h3 class="lab-subheading">Challenge notes</h3><textarea class="note-box large-note" data-note="additional-lab3-challenge-notes" placeholder="Record your anomaly indicator, verification steps, conclusion and recommended defensive control."></textarea>
+<h3 class="lab-subheading">Reflection</h3><p>Write approximately 200 words answering: Burp Intruder identified an unusual response, but why did you still need to verify it manually? Discuss false positives, dynamic content, redirects, cookies, response-length variation and changes in application state.</p><textarea class="note-box large-note" data-note="additional-lab3-reflection" placeholder="Write your reflection here."></textarea>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="defence" type="button">Back</button><button class="primary" data-tab-target="flashcards" type="button">Next</button></div>
+</section>
+<section class="panel" id="flashcards">
+<div class="section-title"><p class="eyebrow">Flashcards</p><h2>Review the key concepts</h2><p>Select a card to reveal the answer. Shuffle the cards to test recall in a different order.</p></div>
+<div class="flashcard-actions"><button class="primary" id="shuffle-cards" type="button">Shuffle cards</button><button class="secondary" id="reset-cards" type="button">Reset order</button></div>
+<div class="flashcard-grid" id="flashcard-grid"></div>
+<div class="page-nav"><button class="secondary" data-tab-target="challenge-lab" type="button">Back</button><article class="card self-task page-complete" data-task="additional-lab3-flashcards"><div class="task-head"><h3>Page completion</h3><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>Tick this after you finish the flashcards.</p></article><button class="primary" data-tab-target="quiz" type="button">Next</button></div>
+</section>
+<section class="panel" id="quiz">
+<div class="section-title"><p class="eyebrow">Quiz</p><h2>Check your understanding</h2><p>Answer the questions and submit the quiz. Aim for 70% or above.</p></div>
+<form class="quiz-form" id="quiz-form"></form>
+<div class="quiz-actions"><button class="primary" id="submit-quiz" type="button">Submit quiz</button><button class="secondary" id="reset-quiz" type="button">Reset quiz</button></div>
+<p class="result-box" id="quiz-result">Complete the quiz and submit your answers.</p>
+<div class="page-nav"><button class="secondary" data-tab-target="flashcards" type="button">Back</button><article class="card self-task page-complete" data-task="additional-lab3-quiz"><div class="task-head"><h3>Page completion</h3><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>Tick this after you finish the quiz.</p></article><button class="primary" data-tab-target="certificate" type="button">Next</button></div>
+</section>
+<section class="panel" id="certificate">
+<div class="section-title"><p class="eyebrow">Certificate</p><h2>Generate your verifiable completion certificate</h2><p>Complete this page after the quiz. The certificate creates a SHA-256 verification hash from your details, completion time and page completion percentage.</p></div>
+<article class="card full warning certificate-instructions"><h3>Privacy note</h3><p>This static website does not send your data to a server. The certificate runs in your browser and uses only the details you enter below.</p></article>
+<div class="grid two certificate-instructions"><article class="card certificate-form-card"><h3>Student details</h3><label class="form-label">Full name<input autocomplete="name" class="form-input" id="cert-name" placeholder="Enter your full name" type="text"/></label><label class="form-label">Student ID<input class="form-input" id="cert-id" placeholder="Enter your student ID" type="text"/></label><p class="hint">Enter your name and student ID only. Do not enter passwords or private information.</p><button class="primary" id="generate-certificate" type="button">Generate certificate</button><button class="secondary" id="print-certificate" type="button">Print certificate</button><p class="inline-feedback" id="certificate-feedback"></p></article><article class="card"><h3>Verification method</h3><p>The page creates this canonical record:</p><pre><code>module=CMP5358|week=Additional-Lab-3|name=...|studentId=...|time=...|completion=...</code></pre><p>It then calculates a SHA-256 hash. Anyone can verify the certificate by recomputing the hash from the same record.</p></article></div>
+<article aria-live="polite" class="card full certificate-card" id="certificate-output"><div class="certificate-border"><p class="eyebrow">CMP 5358 Lab Tutorials</p><h3>Certificate of Completion</h3><p>This certifies that</p><h2 id="cert-display-name">Student Name</h2><p>Student ID: <strong id="cert-display-id">Student ID</strong></p><p>completed <strong>Additional Lab 3: Fuzzing Attack</strong>.</p><div class="certificate-meta"><p><strong>Completion time:</strong> <span id="cert-display-time">Not generated yet</span></p><p><strong>Page completion:</strong> <span id="cert-display-progress">0%</span></p></div><p><strong>Verification hash:</strong></p><p class="hash-output" id="cert-hash">Generate the certificate to create a hash.</p><details class="expected-output certificate-record-detail"><summary>Verification record</summary><pre><code id="cert-record">No record generated yet.</code></pre></details></div></article>
+<div class="page-nav"><button class="secondary" data-tab-target="quiz" type="button">Back</button><a class="secondary" href="index.html">Back</a></div>
+</section>
+</main>
+<div aria-live="polite" class="toast" id="toast" role="status"></div>
+<script>
+window.CMP5358_FLASHCARDS = [{"q": "What is fuzzing in web application testing?", "a": "Fuzzing sends a controlled set of test inputs and compares responses to find unexpected behaviour or weak input handling."}, {"q": "What is the base request in Burp Intruder?", "a": "It is the original captured HTTP request that Intruder modifies for each payload."}, {"q": "What is a payload position?", "a": "It is the exact part of the request that Intruder replaces with test values."}, {"q": "Which value should remain fixed in this lab?", "a": "The username alice must remain fixed. Only the password value changes."}, {"q": "Why does this lab use the Sniper attack type?", "a": "Sniper places one payload list into one selected position, which suits this single-parameter exercise."}, {"q": "What forms the failed-login baseline?", "a": "Repeated HTTP responses with the normal failure message, similar lengths, no redirect to /account and no authenticated access."}, {"q": "Which redirect may indicate a successful login?", "a": "HTTP 302 with Location: /account may indicate success, but you must verify it manually."}, {"q": "Why is response length alone insufficient?", "a": "Templates, cookies, timestamps and other dynamic values can change length without proving successful authentication."}, {"q": "What does Grep - Match do?", "a": "It adds a result column showing whether a response contains selected text, such as the normal failure message."}, {"q": "What provides the strongest verification?", "a": "Manual login that opens /account and shows the expected authorised user and authenticated controls."}, {"q": "Why must the payload list remain small?", "a": "A small list controls load, avoids unnecessary requests and keeps the exercise focused on analysis."}, {"q": "Name two controls that reduce automated password guessing.", "a": "Examples include rate limiting, progressive delays, MFA, temporary lockout, alerting and risk-based detection."}];
+window.CMP5358_QUIZ_QUESTIONS = [{"q": "What does Intruder replace during a Sniper attack?", "options": ["The whole website", "The marked payload position", "The proxy listener", "The browser"], "answer": "The marked payload position", "feedback": "Sniper inserts each payload into the selected payload position."}, {"q": "Which value should remain fixed in the login exercise?", "options": ["username=alice", "Every cookie", "The candidate password", "The response length"], "answer": "username=alice", "feedback": "The exercise changes only the password value for the authorised local account."}, {"q": "What is the normal VulnShop failed-login message?", "options": ["Access granted", "The username or password is incorrect.", "File not found", "Product released"], "answer": "The username or password is incorrect.", "feedback": "This exact text forms an important part of the failure baseline."}, {"q": "Which response most strongly supports further investigation?", "options": ["HTTP 302 with Location: /account", "A one-byte length difference", "A random cookie", "A minor timing change"], "answer": "HTTP 302 with Location: /account", "feedback": "A redirect to the account page is a strong lead, but it still needs manual verification."}, {"q": "What is the strongest verification of a candidate password?", "options": ["Different response length", "Manual authenticated account access", "A highlighted result row", "A timeout"], "answer": "Manual authenticated account access", "feedback": "The browser must show the expected authenticated state for alice."}, {"q": "Why should you keep the password list small?", "options": ["To hide the browser", "To control load and focus on analysis", "To remove cookies", "To enable SQL"], "answer": "To control load and focus on analysis", "feedback": "The lab teaches comparison and verification, not high-volume password guessing."}, {"q": "Why do you clear automatic payload positions?", "options": ["To ensure only the password value changes", "To disable the proxy", "To log out alice", "To increase the request count"], "answer": "To ensure only the password value changes", "feedback": "Extra positions can corrupt the request and produce misleading results."}, {"q": "What does the absence of the failure message prove by itself?", "options": ["Successful authentication", "Nothing conclusive; investigate and verify", "The username is admin", "The server is unavailable"], "answer": "Nothing conclusive; investigate and verify", "feedback": "It supports investigation but does not replace confirmation of authenticated access."}, {"q": "Which control directly slows repeated automated requests?", "options": ["Rate limiting and progressive delays", "Longer page titles", "A different logo", "A larger response body"], "answer": "Rate limiting and progressive delays", "feedback": "These controls reduce request speed and make automated guessing more costly."}, {"q": "Where may you perform this practical?", "options": ["Only the local authorised VulnShop instance", "Any public ecommerce site", "A university production system", "A classmate's account"], "answer": "Only the local authorised VulnShop instance", "feedback": "The tutorial limits testing to 127.0.0.1 and the supplied account."}];
+window.CMP5358_QUIZ_PASS_MESSAGE = 'Good work. You are ready to generate the certificate.';
+window.CMP5358_QUIZ_FAIL_MESSAGE = 'Review the practical tabs and flashcards, then try again.';
+</script>
+<script src="app.js"></script>
+</body>
+</html>

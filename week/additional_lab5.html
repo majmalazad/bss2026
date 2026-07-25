@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html lang="en-GB">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Race Condition Attack | CMP 5358 Additional Lab 5</title>
+<link href="styles.css" rel="stylesheet"/>
+</head>
+<body data-module-code="CMP5358" data-storage-scope="cmp5358-additional-lab-5" data-week-number="Additional-Lab-5">
+<header class="hero">
+<div class="hero__content">
+<p class="eyebrow">CMP 5358 · Additional Lab 5</p>
+<h1>Race Condition Attack</h1>
+<p class="hero__text">Use Burp Repeater groups to compare sequential and parallel request delivery. You will test a promotion limit, a failed-login rate limit and a single-endpoint email workflow, then repeat the same tests in secure mode.</p>
+<div class="hero__actions"><a class="secondary" href="index.html">← Back to main page</a><button class="primary" data-tab-target="overview" type="button">Open Overview</button></div>
+</div>
+<aside aria-label="Additional Lab 5 progress" class="session-card">
+<h2>Your progress</h2><div class="metric"><span id="progress-count">0%</span><small>Section completion</small></div>
+<div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+</aside>
+</header>
+<main class="app-shell">
+<nav aria-label="Additional Lab 5 pages" class="tabs">
+<button class="tab active" data-tab="overview">🏁 Overview</button>
+<button class="tab" data-tab="concepts">🧠 Concepts</button>
+<button class="tab" data-tab="setup">🖥️ Setup</button>
+<button class="tab" data-tab="repeater">🔁 Repeater Groups</button>
+<button class="tab" data-tab="limit-overrun">🏷️ Limit Overrun</button>
+<button class="tab" data-tab="rate-limit">🔐 Rate-Limit Bypass</button>
+<button class="tab" data-tab="single-endpoint">📧 Single Endpoint</button>
+<button class="tab" data-tab="secure-mode">🛡️ Secure Retest</button>
+<button class="tab" data-tab="analysis">📊 Analysis</button>
+<button class="tab" data-tab="challenge-lab">🏆 Challenge Lab</button>
+<button class="tab" data-tab="flashcards">🧠 Flashcards</button>
+<button class="tab" data-tab="quiz">✅ Quiz</button>
+<button class="tab" data-tab="certificate">🎓 Certificate</button>
+</nav>
+<section class="panel active" id="overview">
+<div class="section-title additional-lab-intro">
+<p class="eyebrow">Additional Lab 5</p><h2>Race Condition Attack</h2>
+<p class="lab-subtitle">Limit overrun, rate-limit bypass and single-endpoint collisions</p>
+<div class="tag-list"><span class="badge">Duration: 5–6 hours</span><span class="badge">Target: http://127.0.0.1:5000</span><span class="badge">Tool: Burp Suite Repeater</span></div>
+<figure class="inline-figure additional-lab-figure hero-figure"><img alt="Two requests read, check and use the same shared state before either writes the update." loading="eager" src="assets/additional_labs/race_conditions/race_window.png"/><figcaption>Two concurrent requests can occupy the same race window and make decisions from the same pre-update state.</figcaption></figure>
+<div class="warning"><p><strong>Authorised laboratory use only.</strong> Run every activity only against the supplied VulnShop instance on <code>127.0.0.1</code>. Concurrent testing can corrupt data, lock accounts and disrupt services. Never expose the deliberately vulnerable application to a public or shared network.</p></div>
+</div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab5-overview">
+<div class="task-head"><h2>Overview and learning outcomes</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<p>A race condition appears when concurrent requests interact with shared application state and the server does not enforce a safe order. Several requests may observe a temporary state that should not be available to an attacker.</p>
+<p>This lab uses one evidence-led method throughout: predict the collision, benchmark normal sequential behaviour, probe with parallel delivery, prove the final application-state impact and retest in secure mode.</p>
+<h3 class="lab-subheading">By the end of this lab, you should be able to</h3>
+<ul><li>Explain concurrency, shared state, race windows, temporary sub-states and TOCTOU behaviour.</li><li>Capture a security-critical request and organise copies in a Burp Repeater group.</li><li>Compare grouped requests sent sequentially and in parallel.</li><li>Demonstrate a one-time promotion limit overrun.</li><li>Demonstrate a concurrency-based failed-login rate-limit bypass.</li><li>Demonstrate state mixing in a single email-change endpoint.</li><li>Separate response anomalies from verified second-order effects.</li><li>Explain how atomic updates, transactions, locking, integrity constraints and idempotency prevent collisions.</li></ul>
+<div class="table-wrap"><table><thead><tr><th>Lab</th><th>VulnShop location</th><th>Main objective</th></tr></thead><tbody><tr><td>Limit overrun</td><td><code>/race-condition/limit-overrun</code></td><td>Apply <code>PROMO20</code> more than once and complete an unintended purchase.</td></tr><tr><td>Rate-limit bypass</td><td><code>/race-condition/rate-limit</code></td><td>Place more than three password checks inside one race window.</td></tr><tr><td>Single endpoint</td><td><code>/race-condition/single-endpoint</code></td><td>Mix email-delivery state so the attacker-controlled mailbox receives a privileged confirmation.</td></tr><tr><td>Secure comparison</td><td><code>VULNSHOP_RACE_MODE=secure</code></td><td>Repeat the same tests and verify that the race windows are removed.</td></tr></tbody></table></div>
+<div class="warning"><p><strong>State rule.</strong> Reset the current lab before each fresh benchmark. In the rate-limit lab, resetting selects a new Carlos password, so a previously discovered password becomes invalid.</p></div>
+</article><article class="card full career-connection"><h3>Real-world cyber security and job-market connection</h3><p>Race conditions are business-logic weaknesses that often remain hidden during ordinary sequential testing. Professionals test concurrent requests, verify second-order effects and review whether databases enforce atomic state changes.</p><p><strong>Where you will use it: </strong>This skill supports Application Security, Web Penetration Testing, Backend Security Engineering, Product Security and Secure Code Review roles.</p></article>
+<div class="page-nav"><a class="secondary" href="index.html">Back</a><button class="primary" data-tab-target="concepts" type="button">Next</button></div>
+</section>
+<section class="panel" id="concepts">
+<div class="section-title"><p class="eyebrow">Additional Lab 5</p><h2>Understanding race conditions</h2><p>Learn why correct sequential behaviour does not guarantee correct concurrent behaviour.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab5-concepts">
+<div class="task-head"><h2>1. Core concepts and testing method</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<p>Web servers commonly process requests concurrently. Concurrency alone is not a weakness. The flaw appears when the application assumes that state cannot change between reading and using it, or when related values are created and updated outside one atomic boundary.</p>
+<figure class="inline-figure additional-lab-figure"><img alt="Five-stage race-condition testing methodology: predict, benchmark, probe, prove and retest." src="assets/additional_labs/race_conditions/testing_methodology.png"/><figcaption>Use a baseline-first process rather than treating every unusual response as proof.</figcaption></figure>
+<div class="table-wrap"><table><thead><tr><th>Term</th><th>Meaning in this practical</th></tr></thead><tbody><tr><td>Shared state</td><td>A database row or server-side value read and changed by more than one request.</td></tr><tr><td>Race window</td><td>The short interval during which another request can interfere with an unfinished operation.</td></tr><tr><td>Collision</td><td>An unintended interaction between concurrent operations on the same state.</td></tr><tr><td>Temporary sub-state</td><td>An intermediate state that exists during processing but should not influence security decisions.</td></tr><tr><td>TOCTOU</td><td>Time-of-check to time-of-use: state changes after a check but before the protected action finishes.</td></tr><tr><td>Network jitter</td><td>Variation introduced by transport and connection handling.</td></tr><tr><td>Server-side jitter</td><td>Variation caused by scheduling, processing, database locks or background work.</td></tr><tr><td>Second-order effect</td><td>A later result such as a changed discount, mailbox message or authenticated session.</td></tr><tr><td>Atomic operation</td><td>A state change that succeeds or fails as one indivisible unit.</td></tr><tr><td>Idempotency</td><td>Repeating the same logical operation produces no extra effect.</td></tr></tbody></table></div>
+<h3 class="lab-subheading">Why sequential testing can miss the flaw</h3><p>Sequential requests let the first operation finish before the second starts. The second request sees the final state and may be rejected correctly. Parallel delivery changes the order: several requests can complete the initial check before any request records that the protected action has occurred.</p>
+<div class="callout"><p><strong>Analyst judgement</strong></p><p>An HTTP 200 response does not prove exploitation. Verify the final business effect: an excessive discount, an administrator-enabled session, a mismatched confirmation message or another state transition that should have been impossible.</p></div>
+<div class="grid five"><article class="card"><h3>1. Predict</h3><p>Choose a critical endpoint that changes shared state.</p></article><article class="card"><h3>2. Benchmark</h3><p>Send requests sequentially and record intended behaviour.</p></article><article class="card"><h3>3. Probe</h3><p>Send the same group in parallel.</p></article><article class="card"><h3>4. Prove</h3><p>Verify final state and reduce unnecessary requests.</p></article><article class="card"><h3>5. Retest</h3><p>Repeat the identical test after mitigation.</p></article></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="overview" type="button">Back</button><button class="primary" data-tab-target="setup" type="button">Next</button></div>
+</section>
+<section class="panel" id="setup">
+<div class="section-title"><p class="eyebrow">Laboratory preparation</p><h2>Start VulnShop and sign in</h2><p>Keep the server local and use the same Burp browser session for the customer exercises.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab5-setup">
+<div class="task-head"><h2>2. Prepare the local environment</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<div class="grid two"><article class="card"><h3>Required environment</h3><ul><li>Kali Linux or another instructor-approved local machine.</li><li>The updated VulnShop race-condition package.</li><li>Burp Suite with Repeater tab groups and parallel group sending.</li><li>Burp's embedded browser or Firefox configured for Burp Proxy.</li><li>A terminal kept open for the whole practical.</li></ul></article><article class="card"><h3>Localhost rule</h3><p>Keep VulnShop bound to <code>127.0.0.1</code>. Do not change it to <code>0.0.0.0</code> or expose it to a public, university or shared network.</p></article></div>
+<h3 class="lab-subheading">Step 1 — Start VulnShop</h3><div class="lab-code"><code>cd Desktop/vulnshop
+chmod +x run.sh
+./run.sh</code></div><p>Keep the terminal open. Confirm the application is available at <code>http://127.0.0.1:5000</code>.</p>
+<h3 class="lab-subheading">Step 2 — Open the race-condition dashboard</h3><div class="lab-code"><code>http://127.0.0.1:5000/race-condition</code></div><p>The dashboard is intentionally separate from normal customer navigation.</p>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop race-condition dashboard showing limit overrun, rate-limit bypass and single-endpoint demonstrations." src="assets/additional_labs/race_conditions/race_dashboard.png"/><figcaption>The dashboard presents three isolated demonstrations and shows whether vulnerable or secure mode is active.</figcaption></figure>
+<h3 class="lab-subheading">Step 3 — Sign in as Alice</h3><ol><li>Open <code>http://127.0.0.1:5000/login</code> through Burp's browser.</li><li>Sign in with username <code>alice</code> and password <code>alice123</code>.</li><li>Confirm that the Account and Logout options appear.</li><li>Return to <code>/race-condition</code>.</li></ol>
+<div class="warning"><p><strong>Server reminder.</strong> If a page does not load, confirm that the terminal running VulnShop remains open and that no other process uses port 5000.</p></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="concepts" type="button">Back</button><button class="primary" data-tab-target="repeater" type="button">Next</button></div>
+</section>
+<section class="panel" id="repeater">
+<div class="section-title"><p class="eyebrow">Burp Suite</p><h2>Configure Repeater groups</h2><p>Capture once, group duplicate tabs, benchmark sequentially, then send the same requests in parallel.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab5-repeater">
+<div class="task-head"><h2>3. Repeater workflow</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<ol><li>Start Burp Suite and create a <strong>Temporary project</strong> using Burp defaults.</li><li>Select <strong>Proxy → Intercept → Open browser</strong>.</li><li>Keep <strong>Intercept is off</strong> while navigating. Requests still appear in <strong>Proxy → HTTP history</strong>.</li><li>Perform one normal VulnShop action, locate its POST request, right-click and select <strong>Send to Repeater</strong>.</li><li>Create a Repeater tab group and duplicate the request as required by the exercise.</li><li>Use the arrow beside Send to choose <strong>Send group in sequence (separate connections)</strong> for the baseline.</li><li>Reset the lab, then choose <strong>Send group in parallel</strong> for the race test.</li></ol>
+<figure class="inline-figure additional-lab-figure"><img alt="Burp Repeater workflow: capture, send, group, benchmark, race and verify." src="assets/additional_labs/race_conditions/burp_repeater_workflow.png"/><figcaption>Repeater group workflow for sequential benchmarking and parallel delivery.</figcaption></figure>
+<div class="warning"><p><strong>HTTP version note.</strong> The local Flask development server normally uses HTTP/1. Burp synchronises grouped parallel requests using an HTTP/1 last-byte technique. Do not force HTTP/2 for this machine.</p></div>
+<h3 class="lab-subheading">Read grouped responses carefully</h3><div class="table-wrap"><table><thead><tr><th>Evidence</th><th>What to inspect</th></tr></thead><tbody><tr><td>HTTP status</td><td>200 success, 401 authentication failure, 409 conflict or 429 rate limited.</td></tr><tr><td>JSON body</td><td><code>ok</code>, message, request ID and returned state values.</td></tr><tr><td>Headers</td><td>Inspect <code>Set-Cookie</code> carefully during authentication.</td></tr><tr><td>Timing and order</td><td>Parallel responses may finish in an order different from their tabs.</td></tr><tr><td>VulnShop page</td><td>Refresh after the group finishes and inspect the event table.</td></tr><tr><td>Second-order state</td><td>Check purchase status, discount, mailbox content, confirmed address and administrator access.</td></tr></tbody></table></div>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="setup" type="button">Back</button><button class="primary" data-tab-target="limit-overrun" type="button">Next</button></div>
+</section>
+<section class="panel" id="limit-overrun">
+<div class="section-title"><p class="eyebrow">Lab 1</p><h2>Limit-overrun race condition</h2><p>Make a nominally single-use promotion pass its pre-update check more than once.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab5-limit-overrun">
+<div class="task-head"><h2>4. Apply PROMO20 concurrently</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<div class="callout"><p><strong>Objective</strong></p><p>Apply the one-time <code>PROMO20</code> coupon repeatedly, reduce the £100 product to an amount within the £10 store credit and complete the demonstration purchase.</p></div>
+<figure class="inline-figure additional-lab-figure"><img alt="Two parallel coupon requests both see coupon_used as zero and each add a discount." src="assets/additional_labs/race_conditions/limit_overrun_collision.png"/><figcaption>Parallel requests can both observe <code>coupon_used = 0</code> and each add £20.</figcaption></figure>
+<div class="table-wrap"><table><thead><tr><th>Value</th><th>Laboratory setting</th></tr></thead><tbody><tr><td>Product</td><td>VulnShop Limited Edition Security Jacket</td></tr><tr><td>Original price</td><td>£100.00</td></tr><tr><td>Store credit</td><td>£10.00</td></tr><tr><td>Coupon</td><td><code>PROMO20</code></td></tr><tr><td>Intended discount</td><td>£20 once</td></tr><tr><td>Target effect</td><td>Accumulate at least £90 discount.</td></tr></tbody></table></div>
+<h3 class="lab-subheading">A. Establish the sequential baseline</h3><ol><li>Open <code>/race-condition/limit-overrun</code>.</li><li>Select <strong>Reset this lab</strong>. Confirm Discount total £0.00 and Coupon recorded as used: No.</li><li>Apply <code>PROMO20</code> once. Confirm a £20 discount.</li><li>Apply it a second time. Confirm HTTP 409 and a coupon-reuse message.</li><li>Refresh and confirm the discount remains £20.</li></ol>
+<figure class="inline-figure additional-lab-figure"><img alt="Initial VulnShop limit-overrun page before the coupon is applied." src="assets/additional_labs/race_conditions/limit_overrun_initial.png"/><figcaption>Initial limit-overrun state.</figcaption></figure>
+<h3 class="lab-subheading">B. Capture and prepare the group</h3><ol><li>Reset the lab again.</li><li>Apply the coupon once through Burp's browser so the request appears in HTTP history.</li><li>Send <code>POST /race-condition/limit-overrun/apply-coupon</code> to Repeater.</li><li>Create a group named <code>limit-overrun</code>.</li><li>Duplicate the request until the group contains 10 identical tabs.</li><li>Confirm every request uses the same Alice session cookie and <code>code=PROMO20</code>.</li></ol>
+<div class="lab-code"><code>POST /race-condition/limit-overrun/apply-coupon HTTP/1.1
+Host: 127.0.0.1:5000
+Cookie: session=&lt;your-current-session&gt;
+Content-Type: application/x-www-form-urlencoded
+
+code=PROMO20</code></div>
+<div class="warning"><p><strong>Do not benchmark against used state.</strong> Reset before every grouped test. Once <code>coupon_used</code> becomes true, later requests are rejected before entering the intended race window.</p></div>
+<h3 class="lab-subheading">C. Compare sequence and parallel delivery</h3><ol><li>Send the 10-tab group in sequence. Expect one success and nine HTTP 409 responses. Refresh and confirm £20.</li><li>Reset the lab.</li><li>Send the existing group in parallel. Do not send any tab individually first.</li><li>Several requests should return HTTP 200 and <code>ok: true</code>.</li><li>Refresh and inspect Discount total, Amount payable and Recent server events.</li><li>If fewer than five requests succeed, reset and retry with 15–20 tabs.</li></ol>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop limit-overrun result showing an excessive accumulated discount and server events." src="assets/additional_labs/race_conditions/limit_overrun_success.png"/><figcaption>Parallel coupon requests can increase the discount to £100 although the coupon flag records only one use.</figcaption></figure>
+<h3 class="lab-subheading">D. Prove the business impact</h3><ol><li>Confirm Amount payable is £10 or less.</li><li>Select <strong>Purchase item</strong>.</li><li>Confirm the server reports Purchase completed.</li><li>Capture the final purchase state and event table. HTTP 200 responses alone are not sufficient proof.</li></ol>
+<h3 class="lab-subheading">Why the implementation fails</h3><div class="lab-code"><code>state = SELECT coupon_used FROM race_limit_state
+if state.coupon_used:
+    reject()
+time.sleep(0.65)
+UPDATE race_limit_state
+SET coupon_used = 1,
+    discount_total = discount_total + 20</code></div><p>The check and update are independent. Every concurrent request can read <code>coupon_used = 0</code> before any update completes.</p>
+<h3 class="lab-subheading">Secure design</h3><div class="lab-code"><code>UPDATE race_limit_state
+SET coupon_used = 1,
+    discount_total = discount_total + 20
+WHERE user_id = ?
+  AND coupon_used = 0
+  AND purchased = 0;</code></div><p>The database checks and changes the state in one conditional statement. Exactly one request can update one row.</p>
+<textarea class="note-box" data-note="additional-lab5-limit-notes" placeholder="Record the sequential result, parallel result, final discount, purchase state and mitigation."></textarea>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="repeater" type="button">Back</button><button class="primary" data-tab-target="rate-limit" type="button">Next</button></div>
+</section>
+<section class="panel" id="rate-limit">
+<div class="section-title"><p class="eyebrow">Lab 2</p><h2>Bypassing a failed-login rate limit</h2><p>Place the entire approved candidate set inside the pre-increment race window.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab5-rate-limit">
+<div class="task-head"><h2>5. Test the Carlos staff portal</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<div class="callout"><p><strong>Objective</strong></p><p>Send the 30 approved candidates in one race window, locate the successful authentication response and use its signed session cookie to verify access to the isolated administration page.</p></div>
+<figure class="inline-figure additional-lab-figure"><img alt="Multiple login requests all check a failed-attempt counter below three before it is incremented." src="assets/additional_labs/race_conditions/rate_limit_collision.png"/><figcaption>Parallel authentication attempts can pass the same failed-attempt check before the counter is incremented.</figcaption></figure>
+<div class="table-wrap"><table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody><tr><td>Target username</td><td><code>carlos</code></td></tr><tr><td>Failed-attempt threshold</td><td>3</td></tr><tr><td>Temporary block</td><td>30 seconds</td></tr><tr><td>Candidate count</td><td>30</td></tr><tr><td>Password selection</td><td>Random approved candidate after each reset</td></tr><tr><td>Success evidence</td><td>HTTP 200, <code>ok: true</code> and an administrator-enabled <code>Set-Cookie</code>.</td></tr></tbody></table></div>
+<h3 class="lab-subheading">A. Sequential baseline</h3><ol><li>Open <code>/race-condition/rate-limit</code>.</li><li>Select <strong>Reset this lab</strong>.</li><li>Submit an incorrect password three times sequentially.</li><li>Submit a fourth incorrect password. Confirm HTTP 429.</li><li>Refresh and inspect Recorded failures, Block remaining and Recent server events.</li></ol>
+<figure class="inline-figure additional-lab-figure"><img alt="Initial VulnShop staff portal showing target username, failed-attempt counter and threshold." src="assets/additional_labs/race_conditions/rate_limit_initial.png"/><figcaption>The teaching portal displays the target username, threshold and current counter.</figcaption></figure>
+<h3 class="lab-subheading">B. Prepare the candidate group</h3><p><a class="secondary" download="" href="assets/additional_labs/race_conditions/race-password-candidates.txt">Download the approved 30-candidate list</a></p>
+<div class="table-wrap"><table><tbody><tr><td>123123</td><td>abc123</td><td>football</td></tr><tr><td>monkey</td><td>letmein</td><td>shadow</td></tr><tr><td>master</td><td>666666</td><td>qwertyuiop</td></tr><tr><td>123321</td><td>mustang</td><td>123456</td></tr><tr><td>password</td><td>12345678</td><td>qwerty</td></tr><tr><td>123456789</td><td>12345</td><td>1234</td></tr><tr><td>111111</td><td>1234567</td><td>dragon</td></tr><tr><td>1234567890</td><td>michael</td><td>x654321</td></tr><tr><td>superman</td><td>1qaz2wsx</td><td>baseball</td></tr><tr><td>7777777</td><td>121212</td><td>000000</td></tr></tbody></table></div>
+<div class="warning"><p><strong>Reset changes the password.</strong> After the parallel group finds the candidate, do not reset again. A reset chooses a different candidate and invalidates the recorded password.</p></div>
+<ol><li>Reset once.</li><li>Submit <code>carlos</code> with <code>invalid-password</code> through Burp's browser.</li><li>Send <code>POST /race-condition/rate-limit/login</code> to Repeater.</li><li>Create a group named <code>rate-limit-race</code> with 30 tabs.</li><li>Place one approved candidate in each tab and rename each tab with its value.</li></ol>
+<div class="lab-code"><code>POST /race-condition/rate-limit/login HTTP/1.1
+Host: 127.0.0.1:5000
+Content-Type: application/x-www-form-urlencoded
+
+username=carlos&amp;password=&lt;candidate&gt;</code></div>
+<h3 class="lab-subheading">C. Run and verify</h3><ol><li>Use a small duplicate group with one invalid password to confirm the fourth sequential request is rate limited.</li><li>Reset once more. This selects the password for the final race.</li><li>Send the full 30-tab group in parallel.</li><li>Most responses should be HTTP 401; some may be HTTP 429.</li><li>Find the HTTP 200 response containing <code>ok: true</code>.</li><li>Copy the complete session value from its <code>Set-Cookie</code> header.</li></ol>
+<figure class="inline-figure additional-lab-figure"><img alt="VulnShop staff portal after a successful parallel candidate creates an authenticated Carlos session." src="assets/additional_labs/race_conditions/rate_limit_success.png"/><figcaption>One candidate can create an administrator-enabled race-lab session even though many failures are recorded.</figcaption></figure>
+<h3 class="lab-subheading">D. Use the successful session in Repeater</h3><div class="lab-code"><code>GET /race-condition/admin HTTP/1.1
+Host: 127.0.0.1:5000
+Cookie: session=&lt;successful-response-cookie&gt;</code></div><ol><li>Create this request in a new Repeater tab.</li><li>Send it and confirm HTTP 200. HTTP 403 means you used the wrong cookie.</li><li>For the local objective, send the supplied demonstration action:</li></ol><div class="lab-code"><code>POST /race-condition/admin/delete-carlos HTTP/1.1
+Host: 127.0.0.1:5000
+Cookie: session=&lt;successful-response-cookie&gt;
+Content-Length: 0</code></div><p>Verify that Carlos is shown as Deleted or that the page reports completion.</p>
+<h3 class="lab-subheading">Why the implementation fails</h3><div class="lab-code"><code>state = read_failed_attempts(username)
+if state.failed_attempts &gt;= 3:
+    block()
+time.sleep(0.45)
+valid = compare_password(password)
+if valid:
+    reset_counter()
+else:
+    increment_counter()</code></div><p>The limiter checks the counter before authentication and updates it afterwards. Parallel requests can all observe a value below three.</p>
+<h3 class="lab-subheading">Secure design</h3><p>Put the threshold check, authentication decision and counter update inside one transaction. The secure SQLite implementation uses <code>BEGIN IMMEDIATE</code> to serialise the state transition. Add account, device and network signals, progressive delay, monitoring and MFA as defence in depth.</p>
+<textarea class="note-box" data-note="additional-lab5-rate-notes" placeholder="Record the baseline, successful candidate, status, Set-Cookie evidence, protected-page result and mitigation."></textarea>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="limit-overrun" type="button">Back</button><button class="primary" data-tab-target="single-endpoint" type="button">Next</button></div>
+</section>
+<section class="panel" id="single-endpoint">
+<div class="section-title"><p class="eyebrow">Lab 3</p><h2>Single-endpoint email collision</h2><p>Send two values to the same endpoint and investigate whether request-local and shared state become mixed.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab5-single-endpoint">
+<div class="task-head"><h2>6. Race the email-change workflow</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<div class="callout"><p><strong>Objective</strong></p><p>Deliver a valid confirmation for <code>carlos@vulnshop.local</code> to the attacker-controlled <code>student1@exploit.local</code> mailbox, confirm the address and verify the resulting isolated administrative access.</p></div>
+<figure class="inline-figure additional-lab-figure"><img alt="Two email-change requests mix request-local delivery recipient data with shared pending email and token data." src="assets/additional_labs/race_conditions/single_endpoint_collision.png"/><figcaption>Parallel values sent to one endpoint can mix request-local delivery data with another request's shared pending state.</figcaption></figure>
+<div class="table-wrap"><table><thead><tr><th>Element</th><th>Value</th></tr></thead><tbody><tr><td>Attacker-controlled address</td><td><code>student1@exploit.local</code></td></tr><tr><td>Invited address</td><td><code>carlos@vulnshop.local</code></td></tr><tr><td>Change endpoint</td><td><code>POST /race-condition/single-endpoint/change-email</code></td></tr><tr><td>Mailbox</td><td><code>/race-condition/mailbox</code></td></tr><tr><td>Target mismatch</td><td>Delivered to student1, but the body confirms Carlos.</td></tr></tbody></table></div>
+<h3 class="lab-subheading">A. Establish the normal workflow</h3><ol><li>Confirm you remain logged in as Alice.</li><li>Open <code>/race-condition/single-endpoint</code> and reset the lab.</li><li>Submit <code>student1@exploit.local</code>.</li><li>Open the Training mailbox.</li><li>Confirm both Delivered to and Confirm the pending address show <code>student1@exploit.local</code>.</li><li>Submit a different address sequentially and observe that only one pending address and token remain valid.</li></ol>
+<figure class="inline-figure additional-lab-figure"><img alt="Initial email-change page showing confirmed address, pending slot and invited Carlos address." src="assets/additional_labs/race_conditions/email_change_initial.png"/><figcaption>Initial email-change state.</figcaption></figure>
+<h3 class="lab-subheading">B. Capture and duplicate the request</h3><ol><li>Reset the email lab.</li><li>Submit <code>student1@exploit.local</code> through Burp's browser.</li><li>Send <code>POST /race-condition/single-endpoint/change-email</code> to Repeater.</li><li>Create a group named <code>email-collision</code> containing two copies.</li><li>Set the first tab to <code>student1@exploit.local</code>.</li><li>Set the second tab to <code>carlos@vulnshop.local</code>.</li><li>Confirm both use the same Alice session and endpoint.</li></ol>
+<div class="lab-code"><code>POST /race-condition/single-endpoint/change-email HTTP/1.1
+Host: 127.0.0.1:5000
+Cookie: session=&lt;alice-session&gt;
+Content-Type: application/x-www-form-urlencoded
+
+email=student1@exploit.local</code></div>
+<h3 class="lab-subheading">C. Benchmark and trigger the collision</h3><ol><li>Reset and send the two-tab group in sequence. Confirm the student1 mailbox message consistently names student1.</li><li>Reset again.</li><li>Send the same two tabs in parallel.</li><li>Open <code>/race-condition/mailbox</code> in the Alice browser session.</li><li>Look for a message delivered to <code>student1@exploit.local</code> whose body says <code>Confirm the pending address: carlos@vulnshop.local</code>.</li><li>Record the token and request IDs. If the values match normally, reset and repeat the two-tab parallel group.</li></ol>
+<figure class="inline-figure additional-lab-figure"><img alt="Training mailbox message delivered to student1 but containing a confirmation for Carlos." src="assets/additional_labs/race_conditions/mailbox_mismatch.png"/><figcaption>The attacker-controlled mailbox receives a token whose message body confirms the invited Carlos address.</figcaption></figure>
+<h3 class="lab-subheading">D. Confirm and verify impact</h3><ol><li>Select <strong>Confirm email address</strong> inside the mismatched message.</li><li>Confirm VulnShop reports <code>Email changed to carlos@vulnshop.local</code>.</li><li>Follow the link to the race-lab administration page.</li><li>Verify an administrator-authenticated session.</li><li>Delete the demonstration user Carlos and confirm the lab objective is complete.</li></ol>
+<div class="grid three"><figure class="inline-figure additional-lab-figure"><img alt="Email confirmation page reporting that the email changed to Carlos." src="assets/additional_labs/race_conditions/email_confirmed.png"/><figcaption>The mismatched token confirms the invited address.</figcaption></figure><figure class="inline-figure additional-lab-figure"><img alt="Isolated administration page showing authenticated as Carlos." src="assets/additional_labs/race_conditions/admin_access.png"/><figcaption>Administrative access verifies the privilege effect.</figcaption></figure><figure class="inline-figure additional-lab-figure"><img alt="Administration page showing Carlos deleted and lab objective completed." src="assets/additional_labs/race_conditions/admin_deleted.png"/><figcaption>Deleting Carlos completes the local scenario.</figcaption></figure></div>
+<h3 class="lab-subheading">Why the implementation fails</h3><div class="lab-code"><code># Request-local value
+delivered_to = submitted_email
+UPDATE pending_email = submitted_email,
+       pending_token = token
+queue_confirmation_task()
+
+# Later read from shared state
+latest = SELECT pending_email, pending_token
+send_email(to=delivered_to,
+           body_email=latest.pending_email,
+           token=latest.pending_token)</code></div><p>The delivery address belongs to one request, but the body address and token can come from a later shared-state update.</p>
+<h3 class="lab-subheading">Secure design</h3><p>Store the requested address and token as immutable values and construct the queued message from those same values inside one transaction. Never re-read a mutable shared row while building the message.</p>
+<textarea class="note-box" data-note="additional-lab5-email-notes" placeholder="Record the sequential baseline, recipient/body mismatch, token evidence, confirmed address, privilege impact and mitigation."></textarea>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="rate-limit" type="button">Back</button><button class="primary" data-tab-target="secure-mode" type="button">Next</button></div>
+</section>
+<section class="panel" id="secure-mode">
+<div class="section-title"><p class="eyebrow">Mitigation</p><h2>Restart in secure mode and retest</h2><p>Use the same request values, tab counts and delivery methods so the comparison remains fair.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab5-secure-mode">
+<div class="task-head"><h2>7. Secure-mode comparison</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<ol><li>Return to the terminal and stop VulnShop with <kbd>Ctrl</kbd>+<kbd>C</kbd>.</li><li>Restart the application in secure mode:</li></ol>
+<div class="lab-code"><code>cd Desktop/vulnshop
+VULNSHOP_RACE_MODE=secure ./run.sh</code></div>
+<ol start="3"><li>Open <code>/race-condition</code> and confirm the dashboard badge says <strong>secure</strong>.</li><li>Reset each individual lab before retesting.</li><li>Repeat the same Repeater groups without changing request values, timing or tab count.</li></ol>
+<div class="table-wrap"><table><thead><tr><th>Lab</th><th>Vulnerable-mode indicator</th><th>Expected secure-mode result</th></tr></thead><tbody><tr><td>Limit overrun</td><td>Several coupon requests succeed and discount accumulates.</td><td>Exactly one request succeeds; the rest return 409. Discount remains £20.</td></tr><tr><td>Rate-limit bypass</td><td>More than three parallel requests reach password comparison.</td><td>Three ordinary failures are followed by 429 responses for identical invalid attempts.</td></tr><tr><td>Single endpoint</td><td>Delivery recipient and body address can differ.</td><td>Each message uses one consistent delivery address, body address and token.</td></tr></tbody></table></div>
+<div class="callout"><p><strong>Fair comparison</strong></p><p>A mitigation is supported only when the identical test no longer produces the unintended state and normal approved functionality still works.</p></div>
+<h3 class="lab-subheading">Defence principles</h3><ul><li>Make security-critical state transitions atomic.</li><li>Use conditional writes and verify affected-row counts.</li><li>Apply transactions and appropriate locks around related reads and writes.</li><li>Use uniqueness constraints and invariants as defence in depth.</li><li>Keep values from one request within a consistent snapshot.</li><li>Make sensitive operations idempotent where possible.</li><li>Log request IDs and state transitions.</li><li>Test mitigations under concurrency, not only with single-request unit tests.</li></ul>
+<h3 class="lab-subheading">Secure code-review questions</h3><ul><li>Can two requests read the same unused, unlocked or pending value?</li><li>Does the protected action occur before the server records it?</li><li>Are check and update separated by slow work, network calls or background jobs?</li><li>Can one request overwrite state that another request later uses?</li><li>Does the datastore enforce the invariant?</li><li>Is the operation safe when a client retries after a timeout?</li></ul>
+<textarea class="note-box" data-note="additional-lab5-secure-notes" placeholder="Record each vulnerable result, the secure-mode result and evidence that normal functionality remains available."></textarea>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="single-endpoint" type="button">Back</button><button class="primary" data-tab-target="analysis" type="button">Next</button></div>
+</section>
+<section class="panel" id="analysis">
+<div class="section-title"><p class="eyebrow">Review</p><h2>Security analysis and troubleshooting</h2><p>Map the weakness, assess CIA impact and distinguish weak clues from strong evidence.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab5-analysis">
+<div class="task-head"><h2>8. Interpret the findings</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<h3 class="lab-subheading">CIA impact</h3><div class="table-wrap"><table><thead><tr><th>Scenario</th><th>Confidentiality</th><th>Integrity</th><th>Availability</th></tr></thead><tbody><tr><td>Limit overrun</td><td>Usually limited direct disclosure.</td><td>Prices, discounts, balances and orders violate business rules.</td><td>Repeated requests may consume resources or exhaust stock.</td></tr><tr><td>Rate-limit bypass</td><td>Successful authentication exposes account or administrator information.</td><td>An attacker can change records or delete users.</td><td>Traffic may lock legitimate users or overload authentication.</td></tr><tr><td>Single endpoint</td><td>A token and privileged account state reach an attacker-controlled mailbox.</td><td>The account gains an unauthorised address and privileges.</td><td>The victim may lose access and require recovery.</td></tr></tbody></table></div>
+<h3 class="lab-subheading">CWE mapping</h3><div class="table-wrap"><table><thead><tr><th>CWE</th><th>Name</th><th>Application</th></tr></thead><tbody><tr><td>CWE-362</td><td>Concurrent Execution using Shared Resource with Improper Synchronisation</td><td>Primary concurrency weakness across all three labs.</td></tr><tr><td>CWE-367</td><td>Time-of-check Time-of-use Race Condition</td><td>The coupon and rate-limit checks are separated from later updates.</td></tr><tr><td>CWE-799</td><td>Improper Control of Interaction Frequency</td><td>The login attempt frequency is not enforced under concurrency.</td></tr><tr><td>CWE-841</td><td>Improper Enforcement of Behavioural Workflow</td><td>The workflows permit forbidden state transitions.</td></tr></tbody></table></div>
+<h3 class="lab-subheading">Weak clues and stronger evidence</h3><div class="table-wrap"><table><thead><tr><th>Weak evidence</th><th>Stronger evidence</th></tr></thead><tbody><tr><td>One response had a different length.</td><td>The difference correlates with a verified state transition.</td></tr><tr><td>Several requests returned 200.</td><td>The discount or account state exceeded its invariant.</td></tr><tr><td>A login response looked unusual.</td><td>Its session accessed a protected endpoint.</td></tr><tr><td>An email arrived.</td><td>Recipient, body address and token come from different request values.</td></tr><tr><td>Secure mode seemed better.</td><td>The identical group repeatedly failed to produce the collision.</td></tr></tbody></table></div>
+<h3 class="lab-subheading">Troubleshooting</h3><div class="table-wrap"><table><thead><tr><th>Problem</th><th>Corrective action</th></tr></thead><tbody><tr><td>Dashboard does not load</td><td>Check <code>./run.sh</code> and use the exact local URL.</td></tr><tr><td>Limit or email page redirects to login</td><td>Sign in as <code>alice:alice123</code> in the same Burp browser.</td></tr><tr><td>No request appears in history</td><td>Use Burp's browser and confirm the action generated a POST request.</td></tr><tr><td>Only one coupon succeeds</td><td>Reset, confirm parallel delivery and retry with more tabs.</td></tr><tr><td>Every coupon returns 409</td><td>Reset because the coupon is already recorded as used.</td></tr><tr><td>Candidate found but browser is not admin</td><td>Use the successful Repeater response's session cookie in a new protected request.</td></tr><tr><td>Candidate stops working</td><td>The lab was reset and selected a new password.</td></tr><tr><td>Mailbox values match</td><td>Reset and resend both values in parallel without sending a tab individually first.</td></tr><tr><td>Secure mode still looks vulnerable</td><td>Stop the process fully, restart with the environment variable, verify the badge and reset the lab.</td></tr></tbody></table></div>
+<h3 class="lab-subheading">Analysis questions</h3><ol><li>Which shared record or variable was involved in each collision?</li><li>Where did the temporary sub-state begin and end?</li><li>What did the sequential baseline prove?</li><li>Which response differences were clues, and which evidence proved impact?</li><li>Which datastore invariant should the application enforce?</li><li>Why is a transaction or conditional update stronger than another Boolean check?</li><li>How could monitoring identify attempted exploitation?</li><li>How might several web servers and a remote database change the result?</li></ol>
+<textarea class="note-box large-note" data-note="additional-lab5-analysis-notes" placeholder="Write your comparative analysis across the three labs and secure retests."></textarea>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="secure-mode" type="button">Back</button><button class="primary" data-tab-target="challenge-lab" type="button">Next</button></div>
+</section>
+<section class="panel" id="challenge-lab">
+<div class="section-title"><p class="eyebrow">Independent work</p><h2>Challenge lab</h2><p>Choose at least two challenges and justify your design or experimental conclusions.</p></div>
+<article class="card full additional-lab-section self-task" data-task="additional-lab5-challenge">
+<div class="task-head"><h2>9. Race-condition challenges</h2><label><input class="task-check" type="checkbox"/> Mark complete</label></div>
+<div class="grid two"><article class="card"><h3>Challenge A — Minimum collision set</h3><p>Reduce the coupon-request group until the purchase remains reliably achievable. Explain why the mathematical minimum and practical minimum differ.</p></article><article class="card"><h3>Challenge B — Reliability experiment</h3><p>Run ten coupon tests with groups of 2, 5, 10 and 20. Record successful requests and discuss scheduling variability.</p></article><article class="card"><h3>Challenge C — Distributed rate limiter</h3><p>Design a rate limiter safe across several web-server processes. Explain counter storage, atomic updates and denial-of-service safeguards.</p></article><article class="card"><h3>Challenge D — Email redesign</h3><p>Design an immutable pending-change row with user ID, address, token, time and status. Explain one-time token consumption and a unique active-pending constraint.</p></article><article class="card"><h3>Challenge E — Idempotency</h3><p>Add a conceptual <code>Idempotency-Key</code> to the coupon workflow. Describe storage, duplicate detection and replay responses.</p></article><article class="card"><h3>Challenge F — Detection engineering</h3><p>Create a detection rule for repeated one-time actions, clustered request IDs, authentication attempts before counter updates and confirmation mismatches.</p></article></div>
+<h3 class="lab-subheading">Challenge evidence</h3><p>Your work should include the normal baseline, group configuration, parallel result, final state, secure comparison and a clear explanation of the invariant.</p>
+<textarea class="note-box large-note" data-note="additional-lab5-challenge-notes" placeholder="Record the challenges selected, method, results, limitations and recommended secure design."></textarea>
+<h3 class="lab-subheading">Reflection</h3><p>Explain why an unusual HTTP response is only a clue in race-condition testing. Discuss timing variability, second-order effects, business invariants and secure retesting.</p>
+<textarea class="note-box large-note" data-note="additional-lab5-reflection" placeholder="Write your reflection here."></textarea>
+</article>
+<div class="page-nav"><button class="secondary" data-tab-target="analysis" type="button">Back</button><button class="primary" data-tab-target="flashcards" type="button">Next</button></div>
+</section>
+<section class="panel" id="flashcards">
+<div class="section-title"><p class="eyebrow">Review</p><h2>Flashcards</h2><p>Select a card to reveal the answer. Shuffle the cards to change the order.</p></div>
+<div class="flashcard-actions"><button class="primary" id="shuffle-cards" type="button">Shuffle cards</button><button class="secondary" id="reset-cards" type="button">Reset order</button></div>
+<div class="flashcard-grid" id="flashcard-grid"></div>
+<div class="page-nav"><button class="secondary" data-tab-target="challenge-lab" type="button">Back</button><article class="card self-task page-complete" data-task="additional-lab5-flashcards"><div class="task-head"><h3>Page completion</h3><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>Tick this after you finish the flashcards.</p></article><button class="primary" data-tab-target="quiz" type="button">Next</button></div>
+</section>
+<section class="panel" id="quiz">
+<div class="section-title"><p class="eyebrow">Knowledge check</p><h2>Quiz</h2><p>Answer the questions and submit the quiz. Aim for 70% or above.</p></div>
+<form class="quiz-form" id="quiz-form"></form>
+<div class="quiz-actions"><button class="primary" id="submit-quiz" type="button">Submit quiz</button><button class="secondary" id="reset-quiz" type="button">Reset quiz</button></div>
+<p class="result-box" id="quiz-result">Complete the quiz and submit your answers.</p>
+<div class="page-nav"><button class="secondary" data-tab-target="flashcards" type="button">Back</button><article class="card self-task page-complete" data-task="additional-lab5-quiz"><div class="task-head"><h3>Page completion</h3><label><input class="task-check" type="checkbox"/> Mark complete</label></div><p>Tick this after you finish the quiz.</p></article><button class="primary" data-tab-target="certificate" type="button">Next</button></div>
+</section>
+<section class="panel" id="certificate">
+<div class="section-title"><p class="eyebrow">Certificate</p><h2>Generate your verifiable completion certificate</h2><p>Complete this page after the quiz. The page creates a SHA-256 verification hash in your browser.</p></div>
+<article class="card full warning certificate-instructions"><h3>Privacy note</h3><p>This static website does not send your details to a server. Enter only your name and student ID.</p></article>
+<div class="grid two certificate-instructions"><article class="card certificate-form-card"><h3>Student details</h3><label class="form-label">Full name<input autocomplete="name" class="form-input" id="cert-name" placeholder="Enter your full name" type="text"/></label><label class="form-label">Student ID<input class="form-input" id="cert-id" placeholder="Enter your student ID" type="text"/></label><button class="primary" id="generate-certificate" type="button">Generate certificate</button><button class="secondary" id="print-certificate" type="button">Print certificate</button><p class="inline-feedback" id="certificate-feedback"></p></article><article class="card"><h3>Verification method</h3><p>The page creates this canonical record and then calculates a SHA-256 hash:</p><pre><code>module=CMP5358|week=Additional-Lab-5|name=...|studentId=...|time=...|completion=...</code></pre></article></div>
+<article aria-live="polite" class="card full certificate-card" id="certificate-output"><div class="certificate-border"><p class="eyebrow">CMP 5358 Lab Tutorials</p><h3>Certificate of Completion</h3><p>This certifies that</p><h2 id="cert-display-name">Student Name</h2><p>Student ID: <strong id="cert-display-id">Student ID</strong></p><p>completed <strong>Additional Lab 5: Race Condition Attack</strong>.</p><div class="certificate-meta"><p><strong>Completion time:</strong> <span id="cert-display-time">Not generated yet</span></p><p><strong>Page completion:</strong> <span id="cert-display-progress">0%</span></p></div><p><strong>Verification hash:</strong></p><p class="hash-output" id="cert-hash">Generate the certificate to create a hash.</p><details class="expected-output certificate-record-detail"><summary>Verification record</summary><pre><code id="cert-record">No record generated yet.</code></pre></details></div></article>
+<div class="page-nav"><button class="secondary" data-tab-target="quiz" type="button">Back</button><a class="secondary" href="index.html">Back</a></div>
+</section>
+</main>
+<div aria-live="polite" class="toast" id="toast" role="status"></div>
+<script>
+window.CMP5358_FLASHCARDS = [
+{q:'What is a race condition?',a:'A weakness where concurrent operations interact with shared state without safe ordering or synchronisation.'},
+{q:'What is a race window?',a:'The interval during which another request can interfere with an unfinished state transition.'},
+{q:'What does TOCTOU mean?',a:'Time-of-check to time-of-use: state changes after a check but before the protected action completes.'},
+{q:'Why can sequential testing miss a race?',a:'Sequential requests do not overlap, so each later request sees the completed state update.'},
+{q:'What is the strongest proof of a race condition?',a:'A verified final application-state transition that violates a business or security invariant.'},
+{q:'What is the five-stage testing method?',a:'Predict, benchmark, probe, prove and retest.'},
+{q:'How does a conditional UPDATE prevent the coupon race?',a:'The database checks the current state and updates it in one indivisible statement, so only one request affects the row.'},
+{q:'Why must you preserve the successful Set-Cookie in the rate-limit lab?',a:'It is the bearer credential for the administrator-enabled session created by the successful response.'},
+{q:'What happens when you reset the rate-limit lab?',a:'The lab selects a new Carlos password, so the previous candidate no longer works.'},
+{q:'Which values must remain bound in the email workflow?',a:'The delivery recipient, body address and confirmation token.'},
+{q:'What is a second-order effect?',a:'An impact visible after the HTTP response, such as a stored discount, mailbox message or authenticated session.'},
+{q:'What does BEGIN IMMEDIATE do in SQLite?',a:'It obtains a write transaction that serialises the security-critical check, decision and update.'},
+{q:'What is idempotency?',a:'Repeating the same logical operation causes no additional effect.'},
+{q:'Which CWE primarily describes improper concurrent access?',a:'CWE-362, with CWE-367 applying strongly to check-then-use patterns.'},
+{q:'What proves secure mode mitigated the weakness?',a:'The identical parallel test no longer creates the unintended state, while normal functionality still works.'}
+];
+window.CMP5358_QUIZ_QUESTIONS = [
+{q:'What is a race window?',options:['A firewall rule','The interval in which concurrent operations can interfere','A browser tab','A database backup'],answer:'The interval in which concurrent operations can interfere',feedback:'The race window exists before the shared-state transition completes.'},
+{q:'Why can a second sequential coupon request be rejected even when the endpoint is raceable?',options:['Sequential requests do not overlap','Coupons use HTTPS','Burp removes the cookie','The database is read-only'],answer:'Sequential requests do not overlap',feedback:'The first update finishes before the second check starts.'},
+{q:'What should you change between the sequential benchmark and the parallel probe?',options:['The endpoint and payload','Only the request delivery method','The user account','The application code'],answer:'Only the request delivery method',feedback:'Keep values unchanged so the comparison isolates concurrency.'},
+{q:'Which evidence best proves the coupon race?',options:['Several 200 responses','A changed response length','The final discount exceeds the one-use limit and the purchase completes','A slow request'],answer:'The final discount exceeds the one-use limit and the purchase completes',feedback:'Final state demonstrates the business impact.'},
+{q:'Which response element must you preserve after the successful rate-limit candidate?',options:['Server header','Set-Cookie session value','Content-Length','Date header'],answer:'Set-Cookie session value',feedback:'The session cookie carries the authenticated race-lab state.'},
+{q:'Why must you not reset after finding the Carlos password?',options:['The browser closes','Reset chooses a new password','The coupon is removed','HTTP changes to version 2'],answer:'Reset chooses a new password',feedback:'A reset invalidates the discovered candidate.'},
+{q:'What proves the single-endpoint collision?',options:['Any email arrives','Recipient, body address and token are mixed across requests','A 302 response','A page reload'],answer:'Recipient, body address and token are mixed across requests',feedback:'The mismatch shows state from concurrent requests was combined.'},
+{q:'Which control is strongest for the coupon workflow?',options:['Another Boolean check in application code','An atomic conditional database update','A longer delay','A different HTML form'],answer:'An atomic conditional database update',feedback:'The datastore enforces the invariant in one operation.'},
+{q:'What does BEGIN IMMEDIATE help do?',options:['Encode HTML','Serialise SQLite writes for the critical state transition','Create a DNS record','Open Burp'],answer:'Serialise SQLite writes for the critical state transition',feedback:'The transaction prevents parallel checks and updates from interleaving.'},
+{q:'Which CWE is the primary mapping for improper concurrent use of shared state?',options:['CWE-79','CWE-89','CWE-362','CWE-22'],answer:'CWE-362',feedback:'CWE-362 covers improper synchronisation of concurrent access.'},
+{q:'What is the correct retest method?',options:['Use fewer requests','Repeat the identical parallel group in secure mode','Change the payloads','Inspect only one response'],answer:'Repeat the identical parallel group in secure mode',feedback:'Keep request count, values and delivery method unchanged.'},
+{q:'Where may you run this practical?',options:['Only the local authorised VulnShop environment','Any public ecommerce site','A university production system','A classmate’s account'],answer:'Only the local authorised VulnShop environment',feedback:'Concurrent testing can disrupt services and must remain within the supplied lab.'}
+];
+window.CMP5358_QUIZ_PASS_MESSAGE = 'Good work. You may now generate the Race Condition Attack certificate.';
+window.CMP5358_QUIZ_FAIL_MESSAGE = 'Review the concepts, secure retest and flashcards, then try again.';
+</script>
+<script src="app.js"></script>
+</body>
+</html>
