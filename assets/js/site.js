@@ -53,15 +53,11 @@
   });
 
   const heroSlides = Array.from(document.querySelectorAll('.hero-slide'));
-  const previousButton = document.querySelector('[data-hero-previous]');
-  const nextButton = document.querySelector('[data-hero-next]');
-  const toggleButton = document.querySelector('[data-hero-toggle]');
 
   if (heroSlides.length > 1) {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let currentSlide = 0;
     let timer = null;
-    let paused = reducedMotion.matches;
 
     const showSlide = (index) => {
       currentSlide = (index + heroSlides.length) % heroSlides.length;
@@ -72,13 +68,6 @@
       });
     };
 
-    const updateToggle = () => {
-      if (!toggleButton) return;
-      toggleButton.textContent = paused ? 'Play' : 'Pause';
-      toggleButton.setAttribute('aria-label', paused ? 'Play slideshow' : 'Pause slideshow');
-      toggleButton.setAttribute('aria-pressed', String(paused));
-    };
-
     const stopTimer = () => {
       if (timer) window.clearInterval(timer);
       timer = null;
@@ -86,34 +75,15 @@
 
     const startTimer = () => {
       stopTimer();
-      if (!paused && !document.hidden) {
+      if (!reducedMotion.matches && !document.hidden) {
         timer = window.setInterval(() => showSlide(currentSlide + 1), 6000);
       }
     };
 
-    const setPaused = (value) => {
-      paused = value;
-      updateToggle();
-      startTimer();
-    };
-
-    previousButton?.addEventListener('click', () => {
-      showSlide(currentSlide - 1);
-      startTimer();
-    });
-
-    nextButton?.addEventListener('click', () => {
-      showSlide(currentSlide + 1);
-      startTimer();
-    });
-
-    toggleButton?.addEventListener('click', () => setPaused(!paused));
-
     document.addEventListener('visibilitychange', startTimer);
-    reducedMotion.addEventListener?.('change', (event) => setPaused(event.matches));
+    reducedMotion.addEventListener?.('change', startTimer);
 
     showSlide(0);
-    updateToggle();
     startTimer();
   }
 
