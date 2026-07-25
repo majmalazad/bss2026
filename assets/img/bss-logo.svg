@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 80" role="img" aria-labelledby="title desc">
+  <title id="title">BSS 2026 logo</title>
+  <desc id="desc">A connected blockchain cube icon beside BSS 2026 and the words Security and Scalability.</desc>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#35c5c8"/>
+      <stop offset="1" stop-color="#f1a33c"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="url(#g)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 28 42 13l25 15v29L42 72 17 57Z"/>
+    <path d="m17 28 25 15 25-15M42 43v29"/>
+    <circle cx="17" cy="28" r="4" fill="#35c5c8" stroke="none"/>
+    <circle cx="67" cy="28" r="4" fill="#f1a33c" stroke="none"/>
+    <circle cx="42" cy="72" r="4" fill="#35c5c8" stroke="none"/>
+  </g>
+  <text x="84" y="46" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="800" fill="#ffffff">BSS 2026</text>
+  <text x="84" y="66" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="600" letter-spacing="1.5" fill="#a9c5d6">SECURITY · SCALABILITY</text>
+</svg>
