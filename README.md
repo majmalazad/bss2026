@@ -1,6 +1,6 @@
 # BSS 2026 workshop website
 
-Production-ready static website for the **5th International Workshop on Blockchain Security and Scalability (BSS 2026)**, co-located with IEEE Blockchain 2026 in Montbéliard, France.
+This is a static website for the **5th International Workshop on Blockchain Security and Scalability (BSS 2026)**, co-located with IEEE Blockchain 2026 in Montbéliard, France.
 
 The site uses plain HTML, CSS and JavaScript. It has no build step, package manager, database, analytics service or third-party JavaScript dependency.
 
